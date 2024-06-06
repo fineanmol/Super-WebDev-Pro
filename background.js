@@ -1,4 +1,3 @@
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('Super Web Dev Extension installed.');
-  });
-  
+  console.log("Super Web Dev Extension installed.");
+});

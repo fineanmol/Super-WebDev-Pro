@@ -1,33 +1,25 @@
 {
-    "manifest_version": 3,
-    "name": "Super Web Dev Extension",
-    "version": "1.0",
-    "description": "A comprehensive extension with tools for web developers.",
-    "permissions": [
-      "activeTab",
-      "scripting",
-      "storage",
-      "downloads"
-    ],
-    "host_permissions": [
-      "*://*/*"
-    ],
-    "background": {
-      "service_worker": "background.js"
-    },
-    "content_scripts": [
-      {
-        "matches": ["<all_urls>"],
-        "js": ["content.js"]
-      }
-    ],
-    "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "assets/icon16.png",
-        "48": "assets/icon48.png",
-        "128": "assets/icon128.png"
-      }
+  "manifest_version": 3,
+  "name": "Super Web Dev Extension",
+  "version": "1.0",
+  "description": "A comprehensive extension with tools for web developers.",
+  "permissions": ["activeTab", "scripting", "storage", "downloads"],
+  "host_permissions": ["*://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
     }
   }
-  
+}
