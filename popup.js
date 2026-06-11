@@ -100,6 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showStatus(msg, type) {
     statusAlert.textContent = msg;
+    statusAlert.style.display = ""; // Reset inline override
     statusAlert.className = `status-msg ${type}`;
     setTimeout(() => {
       statusAlert.style.display = "none";

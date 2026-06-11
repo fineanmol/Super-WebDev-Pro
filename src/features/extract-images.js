@@ -83,7 +83,7 @@ export   function setupExtractImages() {
         <div class="img-card" style="background:#15151b; border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; position:relative;">
           <!-- Checkerboard background pattern -->
           <div style="background-image: linear-gradient(45deg, #1c1c24 25%, transparent 25%), linear-gradient(-45deg, #1c1c24 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1c1c24 75%), linear-gradient(-45deg, transparent 75%, #1c1c24 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px; height:120px; display:flex; justify-content:center; align-items:center; position:relative;">
-            <img src="${img.src}" style="max-width:100%; max-height:100%; object-fit:contain;" onload="this.setAttribute('data-loaded', 'true'); this.parentElement.nextElementSibling.querySelector('.img-res').textContent = this.naturalWidth + 'x' + this.naturalHeight;" />
+            <img src="${img.src}" style="max-width:100%; max-height:100%; object-fit:contain;" />
             <button style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.5); border:none; border-radius:4px; color:#fff; width:24px; height:24px; display:flex; justify-content:center; align-items:center; cursor:pointer;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path></svg>
             </button>
@@ -107,6 +107,21 @@ export   function setupExtractImages() {
       slot.querySelector("#img-count-slot").textContent = filtered.length;
 
       // Re-attach event listeners
+      slot.querySelectorAll(".img-card img").forEach(imgEl => {
+        const updateRes = () => {
+          imgEl.setAttribute('data-loaded', 'true');
+          const resLabel = imgEl.parentElement.nextElementSibling.querySelector('.img-res');
+          if (resLabel) {
+            resLabel.textContent = `${imgEl.naturalWidth}x${imgEl.naturalHeight}`;
+          }
+        };
+        if (imgEl.complete) {
+          updateRes();
+        } else {
+          imgEl.onload = updateRes;
+        }
+      });
+
       slot.querySelectorAll(".extract-img-copy-btn").forEach(btn => {
         btn.onclick = () => {
           navigator.clipboard.writeText(btn.getAttribute("data-url"));
@@ -116,31 +131,16 @@ export   function setupExtractImages() {
       slot.querySelectorAll(".extract-img-open-btn").forEach(btn => {
         btn.onclick = () => window.open(btn.getAttribute("data-url"), "_blank");
       });
-      slot.querySelectorAll(".extract-img-dl-btn").forEach(btn => {
-        btn.onclick = async () => {
+      slot.querySelectorAll(".extract-img-dl-btn").forEach((btn, idx) => {
+        btn.onclick = () => {
           const url = btn.getAttribute("data-url");
-          try {
-            const res = await fetch(url);
-            const blob = await res.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = blobUrl;
-            a.download = `extracted_image_${Date.now()}`;
-            a.target = "_blank";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-          } catch(e) {
-            // Fallback if fetch fails (e.g. CORS block)
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `extracted_image_${Date.now()}`;
-            a.target = "_blank";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }
+          const ext = url.startsWith("data:image/svg+xml") ? "svg" : "png";
+          chrome.runtime.sendMessage({
+            action: "downloadFile",
+            url: url,
+            filename: `extracted_image_${Date.now()}_${idx + 1}.${ext}`
+          });
+          showToast("Download started...");
         };
       });
     };
@@ -241,29 +241,14 @@ export   function setupExtractImages() {
           return true;
         });
         filtered.forEach((img, idx) => {
-          setTimeout(async () => {
-            try {
-              const res = await fetch(img.src);
-              const blob = await res.blob();
-              const blobUrl = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = blobUrl;
-              a.target = "_blank";
-              a.download = `extracted-${img.type}-${idx + 1}`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-            } catch(e) {
-              const a = document.createElement("a");
-              a.href = img.src;
-              a.target = "_blank";
-              a.download = `extracted-${img.type}-${idx + 1}`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            }
-          }, idx * 250);
+          setTimeout(() => {
+            const ext = img.src.startsWith("data:image/svg+xml") ? "svg" : "png";
+            chrome.runtime.sendMessage({
+              action: "downloadFile",
+              url: img.src,
+              filename: `extracted-${img.type}-${idx + 1}.${ext}`
+            });
+          }, idx * 150);
         });
       };
     });

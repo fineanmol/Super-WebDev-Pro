@@ -121,6 +121,15 @@ export   function deactivateCurrentTool() {
       state.selectedElementForMove = null;
     }
 
+    // Hide overlay modals
+    if (state.shadowRoot) {
+      const settingsModal = state.shadowRoot.getElementById("settings-modal-overlay");
+      if (settingsModal) settingsModal.style.display = "none";
+      
+      const rvOverlay = state.shadowRoot.getElementById("responsive-viewer-overlay");
+      if (rvOverlay) rvOverlay.style.display = "none";
+    }
+
     showToast(`Disabled: ${state.activeTool.replace(/-/g, ' ').toUpperCase()}`);
     state.activeTool = null;
     updateSidebarActiveBtn();

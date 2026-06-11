@@ -14,6 +14,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // Keep message channel open for async response
   }
+
+  if (request.action === "downloadFile") {
+    chrome.downloads.download({
+      url: request.url,
+      filename: request.filename,
+      saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ success: true, downloadId });
+      }
+    });
+    return true;
+  }
 });
 
 // Listener for hotkey commands

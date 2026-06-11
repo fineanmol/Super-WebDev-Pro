@@ -13,7 +13,11 @@ export   function showHighlight(rect, labelText, customColor = null) {
 
     if (customColor) {
       state.highlightOverlay.style.borderColor = customColor;
-      state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+      if (typeof customColor === "string" && customColor.startsWith("var(")) {
+        state.highlightOverlay.style.backgroundColor = "rgba(184, 163, 252, 0.08)"; // fallback translucent
+      } else {
+        state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+      }
       state.highlightLabel.style.backgroundColor = customColor;
     } else {
       // If CSS Inspector is active, use a nice neon green, otherwise purple

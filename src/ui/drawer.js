@@ -1,8 +1,33 @@
 import { state } from '../state.js';
 import { ensureHUD } from './hud.js';
+import { deactivateCurrentTool } from '../core/tool-manager.js';
+
+export function resetDrawerHeader() {
+  if (!state.drawerEl) return;
+  const titleSlot = state.shadowRoot.getElementById("drawer-title-slot");
+  if (titleSlot) return; // Header is intact
+
+  // Recreate default header structure
+  const header = state.drawerEl.querySelector(".drawer-header");
+  if (header) {
+    header.innerHTML = `
+      <div>
+        <h3 class="drawer-title" id="drawer-title-slot">Tool Details</h3>
+        <div class="drawer-subtitle" id="drawer-sub-slot">Select a tool to display diagnostics</div>
+      </div>
+      <button class="drawer-close" id="drawer-close-btn">&times;</button>
+    `;
+    
+    // Re-wire close button event listener
+    header.querySelector("#drawer-close-btn").onclick = () => {
+      deactivateCurrentTool();
+    };
+  }
+}
 
 export   function openDrawer(title, subtitle, contentHTML, onRender = null) {
     ensureHUD();
+    resetDrawerHeader();
     state.shadowRoot.getElementById("drawer-title-slot").textContent = title;
     state.shadowRoot.getElementById("drawer-sub-slot").textContent = subtitle;
     const slot = state.shadowRoot.getElementById("drawer-content-slot");
@@ -11,6 +36,7 @@ export   function openDrawer(title, subtitle, contentHTML, onRender = null) {
 
     if (onRender) onRender(slot);
   }
+
 
 
 export   function closeDrawer() {

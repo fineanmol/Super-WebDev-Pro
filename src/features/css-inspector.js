@@ -34,7 +34,7 @@ export   function setupCSSInspector() {
         <button class="drawer-close" id="drawer-close-btn">&times;</button>
       </div>
     `;
-    drawerHeader.querySelector("#drawer-close-btn").onclick = closeDrawer;
+    drawerHeader.querySelector("#drawer-close-btn").onclick = deactivateCurrentTool;
 
     trackListener(document, "mouseover", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) return;

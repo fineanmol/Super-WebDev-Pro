@@ -1795,7 +1795,7 @@ export   function setupSidebarEvents() {
 
     // Drawer close
     state.shadowRoot.getElementById("drawer-close-btn").addEventListener("click", () => {
-      closeDrawer();
+      deactivateCurrentTool();
     });
 
     // Dashboard Branding Button
@@ -1837,12 +1837,16 @@ export   function setupSidebarEvents() {
         // Handle premium lock
         const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
         if (premiumTools.includes(tool.id) && !state.isPremium) {
+          deactivateCurrentTool();
           showPremiumLockedDrawer(tool.id);
+          state.activeTool = tool.id;
+          updateSidebarActiveBtn();
           return;
         }
 
         if (state.activeTool === tool.id) {
-          if (state.drawerEl && !state.drawerEl.classList.contains("visible")) {
+          const isOverlayTool = ["settings", "responsive-viewer"].includes(tool.id);
+          if (!isOverlayTool && state.drawerEl && !state.drawerEl.classList.contains("visible")) {
             state.drawerEl.classList.add("visible");
           } else {
             deactivateCurrentTool();

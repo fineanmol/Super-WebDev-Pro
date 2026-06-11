@@ -105,20 +105,45 @@ export function setupSettings() {
       `;
       state.shadowRoot.appendChild(modal);
 
+      const defaultSettings = {
+        licenseKey: "",
+        theme: "dark",
+        sidebarPosition: "right",
+        colorFormat: "hex",
+        colorAutoCopy: true,
+        extractBgImages: true,
+        extractMetaTags: true,
+        extractZip: false,
+        screenshotFormat: "png",
+        screenshotAutoDownload: true,
+        markdownImages: true,
+        markdownTables: true,
+        pdfStripStyle: true,
+        exportInlineCSS: true,
+        exportPrettier: false,
+        aiModel: "gpt-4o",
+        cssHighlightBoxModel: true,
+        deleteConfirm: true,
+        jsonIndent: "2",
+        tabSuspend: true,
+        readerFont: "serif",
+        clock24h: true
+      };
+
       const contentPanes = {
         "Account": `
           <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Account</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Sign in or paste a license key to unlock every premium tool.</p>
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">
-                <span style="color: #fff; font-weight: 500;">Anmol Agarwal</span> · Lifetime · 1/3 devices · aa577@expert.micro1.ai
-              </div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Manage your SuperDev Pro license key.</p>
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap:16px;">
+            <div id="license-status-container">
+              <!-- Dynamically loaded -->
             </div>
-            <button style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.2s;">
-              Sign out
-            </button>
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="settings-license-input" placeholder="Enter License Key (e.g. WEBDEVPRO2026)" style="flex:1; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px 12px; color:#fff; font-size:12px; outline:none;" />
+              <button id="settings-license-btn" style="border: none; border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;">
+                Verify
+              </button>
+            </div>
           </div>
         `,
         "Appearance": `
@@ -130,10 +155,10 @@ export function setupSettings() {
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Theme</div>
                 <div style="font-size:12px; color:var(--text-secondary);">Choose your preferred color scheme.</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>Dark Mode (Default)</option>
-                <option>Light Mode</option>
-                <option>System Auto</option>
+              <select data-setting="theme" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="dark">Dark Mode (Default)</option>
+                <option value="light">Light Mode</option>
+                <option value="system">System Auto</option>
               </select>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
@@ -141,9 +166,9 @@ export function setupSettings() {
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Sidebar Position</div>
                 <div style="font-size:12px; color:var(--text-secondary);">Default docking side for the main HUD.</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>Right (Default)</option>
-                <option>Left</option>
+              <select data-setting="sidebarPosition" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="right">Right (Default)</option>
+                <option value="left">Left</option>
               </select>
             </div>
           </div>
@@ -157,14 +182,14 @@ export function setupSettings() {
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Default Color Format</div>
                 <div style="font-size:12px; color:var(--text-secondary);">Format copied to clipboard on click.</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>HEX (#FFFFFF)</option>
-                <option>RGB (rgb(255,255,255))</option>
-                <option>HSL (hsl(0,0%,100%))</option>
+              <select data-setting="colorFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="hex">HEX (#FFFFFF)</option>
+                <option value="rgb">RGB (rgb(255,255,255))</option>
+                <option value="hsl">HSL (hsl(0,0%,100%))</option>
               </select>
             </div>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Auto-copy to clipboard on click
+              <input type="checkbox" data-setting="colorAutoCopy" /> Auto-copy to clipboard on click
             </label>
           </div>
         `,
@@ -173,13 +198,13 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure media scraping defaults.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Capture background-image CSS properties
+              <input type="checkbox" data-setting="extractBgImages" /> Capture background-image CSS properties
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Capture Favicons & OG Meta tags
+              <input type="checkbox" data-setting="extractMetaTags" /> Capture Favicons & OG Meta tags
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" /> Zip downloads automatically
+              <input type="checkbox" data-setting="extractZip" /> Zip downloads automatically
             </label>
           </div>
         `,
@@ -191,14 +216,14 @@ export function setupSettings() {
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Format</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>PNG (High Quality)</option>
-                <option>JPEG (Smaller Size)</option>
-                <option>WebP</option>
+              <select data-setting="screenshotFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="png">PNG (High Quality)</option>
+                <option value="jpeg">JPEG (Smaller Size)</option>
+                <option value="webp">WebP</option>
               </select>
             </div>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Auto-download on capture
+              <input type="checkbox" data-setting="screenshotAutoDownload" /> Auto-download on capture
             </label>
           </div>
         `,
@@ -207,10 +232,10 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure markdown extraction formatting.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Include images as markdown links
+              <input type="checkbox" data-setting="markdownImages" /> Include images as markdown links
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Preserve table structures
+              <input type="checkbox" data-setting="markdownTables" /> Preserve table structures
             </label>
           </div>
         `,
@@ -219,7 +244,7 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure PDF print properties.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Strip unnecessary styling (Reader view)
+              <input type="checkbox" data-setting="pdfStripStyle" /> Strip unnecessary styling (Reader view)
             </label>
           </div>
         `,
@@ -228,10 +253,10 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure element bundle extraction.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Inline CSS into style tags
+              <input type="checkbox" data-setting="exportInlineCSS" /> Inline CSS into style tags
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" /> Pre-format using Prettier
+              <input type="checkbox" data-setting="exportPrettier" /> Pre-format using Prettier
             </label>
           </div>
         `,
@@ -243,9 +268,9 @@ export function setupSettings() {
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Language Model</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>GPT-4o (Premium)</option>
-                <option>Claude 3.5 Sonnet</option>
+              <select data-setting="aiModel" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="gpt-4o">GPT-4o (Premium)</option>
+                <option value="claude-3-5">Claude 3.5 Sonnet</option>
               </select>
             </div>
           </div>
@@ -255,7 +280,7 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure layout overlays and property formats.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Highlight element box-model on hover
+              <input type="checkbox" data-setting="cssHighlightBoxModel" /> Highlight element box-model on hover
             </label>
           </div>
         `,
@@ -264,7 +289,7 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configuration for element deletion tool.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Require confirmation for container nodes
+              <input type="checkbox" data-setting="deleteConfirm" /> Require confirmation for container nodes
             </label>
           </div>
         `,
@@ -276,10 +301,10 @@ export function setupSettings() {
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Indentation Space</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>2 Spaces</option>
-                <option>4 Spaces</option>
-                <option>Tabs</option>
+              <select data-setting="jsonIndent" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="2">2 Spaces</option>
+                <option value="4">4 Spaces</option>
+                <option value="tabs">Tabs</option>
               </select>
             </div>
           </div>
@@ -289,7 +314,7 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure tab suspended and memory management.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Automatically suspend inactive tabs after 15 mins
+              <input type="checkbox" data-setting="tabSuspend" /> Automatically suspend inactive tabs after 15 mins
             </label>
           </div>
         `,
@@ -301,9 +326,9 @@ export function setupSettings() {
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Font Preference</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>Serif (Georgia)</option>
-                <option>Sans-Serif (Inter)</option>
+              <select data-setting="readerFont" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="serif">Serif (Georgia)</option>
+                <option value="sans">Sans-Serif (Inter)</option>
               </select>
             </div>
           </div>
@@ -313,13 +338,12 @@ export function setupSettings() {
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure timezone defaults.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Use 24-hour time format
+              <input type="checkbox" data-setting="clock24h" /> Use 24-hour time format
             </label>
           </div>
         `
       };
 
-      // Default fallback
       const defaultContent = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary); opacity:0.5;">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:16px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -328,8 +352,113 @@ export function setupSettings() {
         </div>
       `;
 
+      function initPaneSettings(p, tabLabel) {
+        if (tabLabel === "Account") {
+          initAccountPane(p);
+          return;
+        }
+
+        const elements = p.querySelectorAll("[data-setting]");
+        if (elements.length === 0) return;
+
+        const keys = Array.from(elements).map(el => el.getAttribute("data-setting"));
+        chrome.storage.local.get(keys, (res) => {
+          elements.forEach(el => {
+            const key = el.getAttribute("data-setting");
+            const savedVal = res[key];
+            const defaultVal = defaultSettings[key];
+            const currentVal = savedVal !== undefined ? savedVal : defaultVal;
+
+            if (el.type === "checkbox") {
+              el.checked = !!currentVal;
+            } else if (el.tagName === "SELECT") {
+              el.value = currentVal;
+            }
+
+            el.onchange = (e) => {
+              const val = el.type === "checkbox" ? el.checked : el.value;
+              chrome.storage.local.set({ [key]: val }, () => {
+                showToast(`Saved setting: ${key.replace(/([A-Z])/g, ' $1')}`);
+                if (key === "sidebarPosition") {
+                  import("../ui/hud.js").then(m => m.setSidebarPosition(val));
+                }
+              });
+            };
+          });
+        });
+      }
+
+      function initAccountPane(p) {
+        const statusContainer = p.querySelector("#license-status-container");
+        const input = p.querySelector("#settings-license-input");
+        const btn = p.querySelector("#settings-license-btn");
+
+        function renderStatus() {
+          chrome.storage.local.get(["premium", "licenseKey"], (res) => {
+            const isPro = res.premium !== false; // Align with default true in content script
+            const key = res.licenseKey || "";
+            input.value = key;
+            
+            if (isPro) {
+              statusContainer.innerHTML = `
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
+                  <div style="font-size: 12px; color: var(--text-secondary);">
+                    <span style="color: #4ade80; font-weight: 600;">SuperDev Pro Active</span> · Lifetime License · 1/3 devices
+                  </div>
+                </div>
+              `;
+              btn.textContent = "Deactivate";
+              btn.style.background = "rgba(239, 68, 68, 0.2)";
+              btn.style.border = "1px solid rgba(239, 68, 68, 0.4)";
+              btn.style.color = "#ef4444";
+            } else {
+              statusContainer.innerHTML = `
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
+                  <div style="font-size: 12px; color: var(--text-secondary);">
+                    <span style="color: var(--text-secondary); font-weight: 500;">Free Version (Limited Features)</span>
+                  </div>
+                </div>
+              `;
+              btn.textContent = "Activate";
+              btn.style.background = "var(--accent-purple)";
+              btn.style.border = "none";
+              btn.style.color = "#000";
+            }
+          });
+        }
+
+        btn.onclick = () => {
+          chrome.storage.local.get(["premium"], (res) => {
+            const isPro = res.premium !== false;
+            if (isPro) {
+              chrome.storage.local.set({ premium: false, licenseKey: "" }, () => {
+                showToast("Pro license deactivated.");
+                state.isPremium = false;
+                renderStatus();
+              });
+            } else {
+              const key = input.value.trim().toUpperCase();
+              if (key === "WEBDEVPRO2026") {
+                chrome.storage.local.set({ premium: true, licenseKey: key }, () => {
+                  showToast("SuperDev Pro activated successfully!");
+                  state.isPremium = true;
+                  renderStatus();
+                });
+              } else {
+                showToast("Invalid key. Try WEBDEVPRO2026");
+              }
+            }
+          });
+        };
+
+        renderStatus();
+      }
+
       const pane = modal.querySelector("#settings-content-pane");
       pane.innerHTML = contentPanes["Account"];
+      initPaneSettings(pane, "Account");
 
       const navBtns = modal.querySelectorAll(".settings-nav-btn");
       navBtns.forEach(btn => {
@@ -347,6 +476,7 @@ export function setupSettings() {
           // Parse label
           const label = btn.textContent.trim();
           pane.innerHTML = contentPanes[label] || defaultContent.replace("Settings panel", label + " settings");
+          initPaneSettings(pane, label);
         };
       });
 
@@ -356,5 +486,8 @@ export function setupSettings() {
       };
     } else {
       modal.style.display = "flex";
+      const pane = modal.querySelector("#settings-content-pane");
+      pane.innerHTML = contentPanes["Account"];
+      initPaneSettings(pane, "Account");
     }
   }

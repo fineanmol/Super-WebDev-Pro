@@ -66,34 +66,17 @@ export   function extractColor(propName, value) {
     return match ? match[0] : null;
   }
 
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "getActiveTool") {
-      sendResponse({ activeTool: state.activeTool });
-      return;
-    }
+export function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
-    if (request.action === "toggleSidebarShortcut") {
-      toggleSidebarVisibility();
-      sendResponse({ status: "success" });
-      return;
-    }
 
-    if (request.action === "toggleTool") {
-      state.isPremium = !!request.premium;
-      ensureHUD();
-      if (!state.sidebarVisible) {
-        setSidebarVisible(true);
-      }
-      
-      if (state.activeTool === request.tool) {
-        deactivateCurrentTool();
-        sendResponse({ status: "success", isActive: false });
-      } else {
-        activateTool(request.tool);
-        sendResponse({ status: "success", isActive: true });
-      }
-    }
-  });
 
   // Setup HUD host & Shadow Root
 

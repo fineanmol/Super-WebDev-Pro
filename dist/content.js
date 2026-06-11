@@ -1,29 +1,54 @@
 (() => {
-  // src/state.js
-  var state = {
-    isSidebarOpen: false,
-    activeTool: null,
-    // "css-inspector", "live-text-editor", etc.
-    sidebarEl: null,
-    drawerEl: null,
-    shadowRoot: null,
-    hostDiv: null,
-    // Tool specific state
-    hoverEl: null,
-    highlightOverlay: null,
-    originalStyles: /* @__PURE__ */ new WeakMap(),
-    originalText: /* @__PURE__ */ new WeakMap(),
-    selectedElementForCss: null,
-    activeInspectorTab: "all",
-    // Responsive Viewer
-    activeListeners: [],
-    activeIFrames: [],
-    deviceList: [],
-    // Ruler
-    rulerCanvas: null,
-    disabledStyles: /* @__PURE__ */ new WeakMap(),
-    disabledStyleValues: /* @__PURE__ */ new WeakMap()
+  var __defProp = Object.defineProperty;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __esm = (fn, res) => function __init() {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
   };
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+
+  // src/state.js
+  var state;
+  var init_state = __esm({
+    "src/state.js"() {
+      state = {
+        isSidebarOpen: false,
+        activeTool: null,
+        // "css-inspector", "live-text-editor", etc.
+        sidebarEl: null,
+        drawerEl: null,
+        shadowRoot: null,
+        hostDiv: null,
+        hostEl: null,
+        toastEl: null,
+        // Tool specific state
+        hoverEl: null,
+        highlightOverlay: null,
+        originalStyles: /* @__PURE__ */ new WeakMap(),
+        originalText: /* @__PURE__ */ new WeakMap(),
+        selectedElementForCss: null,
+        activeInspectorTab: "all",
+        outlinerColor: "rgba(184, 163, 252, 0.65)",
+        // Responsive Viewer
+        activeListeners: [],
+        activeIFrames: [],
+        deviceList: [],
+        // Ruler
+        rulerCanvas: null,
+        disabledStyles: /* @__PURE__ */ new WeakMap(),
+        disabledStyleValues: /* @__PURE__ */ new WeakMap(),
+        // Undo stacks for various tools
+        undoStacks: {
+          textEdits: [],
+          deletedElements: [],
+          movedElements: [],
+          swappedImages: []
+        }
+      };
+    }
+  });
 
   // src/utils.js
   function formatElementSelector(el) {
@@ -86,29 +111,14 @@
     const match = value.match(/(rgba?\(.*?\)|#[0-9a-fA-F]{3,8})/);
     return match ? match[0] : null;
   }
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "getActiveTool") {
-      sendResponse({ activeTool: state.activeTool });
-      return;
-    }
-    if (request.action === "toggleSidebarShortcut") {
-      toggleSidebarVisibility();
-      sendResponse({ status: "success" });
-      return;
-    }
-    if (request.action === "toggleTool") {
-      state.isPremium = !!request.premium;
-      ensureHUD();
-      if (!state.sidebarVisible) {
-        setSidebarVisible(true);
-      }
-      if (state.activeTool === request.tool) {
-        deactivateCurrentTool();
-        sendResponse({ status: "success", isActive: false });
-      } else {
-        activateTool(request.tool);
-        sendResponse({ status: "success", isActive: true });
-      }
+  function escapeHTML(str) {
+    if (!str) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+  var init_utils = __esm({
+    "src/utils.js"() {
+      init_state();
+      init_hud();
     }
   });
 
@@ -122,7 +132,11 @@
     state.highlightOverlay.style.display = "block";
     if (customColor) {
       state.highlightOverlay.style.borderColor = customColor;
-      state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+      if (typeof customColor === "string" && customColor.startsWith("var(")) {
+        state.highlightOverlay.style.backgroundColor = "rgba(184, 163, 252, 0.08)";
+      } else {
+        state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+      }
       state.highlightLabel.style.backgroundColor = customColor;
     } else {
       const defaultBorder = state.activeTool === "css-inspector" ? "#4ade80" : "var(--accent-purple)";
@@ -282,10 +296,36 @@
     state.inspectorTooltip.style.left = `${x}px`;
     state.inspectorTooltip.style.top = `${y}px`;
   }
+  var init_highlight = __esm({
+    "src/ui/highlight.js"() {
+      init_state();
+      init_hud();
+      init_utils();
+    }
+  });
 
   // src/ui/drawer.js
+  function resetDrawerHeader() {
+    if (!state.drawerEl) return;
+    const titleSlot = state.shadowRoot.getElementById("drawer-title-slot");
+    if (titleSlot) return;
+    const header = state.drawerEl.querySelector(".drawer-header");
+    if (header) {
+      header.innerHTML = `
+      <div>
+        <h3 class="drawer-title" id="drawer-title-slot">Tool Details</h3>
+        <div class="drawer-subtitle" id="drawer-sub-slot">Select a tool to display diagnostics</div>
+      </div>
+      <button class="drawer-close" id="drawer-close-btn">&times;</button>
+    `;
+      header.querySelector("#drawer-close-btn").onclick = () => {
+        deactivateCurrentTool();
+      };
+    }
+  }
   function openDrawer(title, subtitle, contentHTML, onRender = null) {
     ensureHUD();
+    resetDrawerHeader();
     state.shadowRoot.getElementById("drawer-title-slot").textContent = title;
     state.shadowRoot.getElementById("drawer-sub-slot").textContent = subtitle;
     const slot = state.shadowRoot.getElementById("drawer-content-slot");
@@ -313,6 +353,13 @@
     `;
     openDrawer("Feature Locked", "Pro license required", html);
   }
+  var init_drawer = __esm({
+    "src/ui/drawer.js"() {
+      init_state();
+      init_hud();
+      init_tool_manager();
+    }
+  });
 
   // src/ui/toast.js
   function showToast(msg) {
@@ -324,6 +371,12 @@
       state.toastEl.classList.remove("visible");
     }, 2500);
   }
+  var init_toast = __esm({
+    "src/ui/toast.js"() {
+      init_state();
+      init_hud();
+    }
+  });
 
   // src/features/css-inspector.js
   function setupCSSInspector() {
@@ -352,7 +405,7 @@
         <button class="drawer-close" id="drawer-close-btn">&times;</button>
       </div>
     `;
-    drawerHeader.querySelector("#drawer-close-btn").onclick = closeDrawer;
+    drawerHeader.querySelector("#drawer-close-btn").onclick = deactivateCurrentTool;
     trackListener(document, "mouseover", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) return;
       const rect = e.target.getBoundingClientRect();
@@ -447,15 +500,6 @@
       }
     });
   }
-  var PROPERTIES_BY_TAB = {
-    all: ["display", "position", "top", "right", "bottom", "left", "width", "height", "margin", "padding", "color", "background-color", "border", "border-radius", "font-family", "font-size", "line-height", "font-weight", "text-align", "box-shadow", "opacity", "cursor", "z-index"],
-    "web-layout": ["display", "position", "top", "right", "bottom", "left", "width", "height", "margin", "padding", "box-sizing", "overflow", "z-index"],
-    typography: ["font-family", "font-size", "line-height", "font-weight", "text-align", "color", "letter-spacing", "text-transform", "white-space", "word-break"],
-    color: ["color", "border-color", "outline-color", "text-decoration-color"],
-    effects: ["box-shadow", "opacity", "mix-blend-mode", "filter", "backdrop-filter", "transform", "transition"],
-    background: ["background-color", "background-image", "background-size", "background-position", "background-repeat"],
-    grid: ["grid-template-columns", "grid-template-rows", "grid-gap", "align-items", "justify-content", "flex-direction", "flex-wrap"]
-  };
   function parseValAndUnit(valStr) {
     if (!valStr) return { value: 0, unit: "px" };
     const match = String(valStr).trim().match(/^([\d.]+)([a-zA-Z%]*)$/);
@@ -879,6 +923,27 @@ ${lines.join("\n")}
     }
     renderPropertiesList();
   }
+  var PROPERTIES_BY_TAB;
+  var init_css_inspector = __esm({
+    "src/features/css-inspector.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+      PROPERTIES_BY_TAB = {
+        all: ["display", "position", "top", "right", "bottom", "left", "width", "height", "margin", "padding", "color", "background-color", "border", "border-radius", "font-family", "font-size", "line-height", "font-weight", "text-align", "box-shadow", "opacity", "cursor", "z-index"],
+        "web-layout": ["display", "position", "top", "right", "bottom", "left", "width", "height", "margin", "padding", "box-sizing", "overflow", "z-index"],
+        typography: ["font-family", "font-size", "line-height", "font-weight", "text-align", "color", "letter-spacing", "text-transform", "white-space", "word-break"],
+        color: ["color", "border-color", "outline-color", "text-decoration-color"],
+        effects: ["box-shadow", "opacity", "mix-blend-mode", "filter", "backdrop-filter", "transform", "transition"],
+        background: ["background-color", "background-image", "background-size", "background-position", "background-repeat"],
+        grid: ["grid-template-columns", "grid-template-rows", "grid-gap", "align-items", "justify-content", "flex-direction", "flex-wrap"]
+      };
+    }
+  });
 
   // src/features/live-text-editor.js
   function setupLiveTextEditor() {
@@ -950,6 +1015,17 @@ ${lines.join("\n")}
       delete e.target.dataset.oldText;
     });
   }
+  var init_live_text_editor = __esm({
+    "src/features/live-text-editor.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/fonts-changer.js
   function setupFontsChanger() {
@@ -1003,6 +1079,17 @@ ${lines.join("\n")}
       });
     });
   }
+  var init_fonts_changer = __esm({
+    "src/features/fonts-changer.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/list-fonts.js
   function setupListFonts() {
@@ -1036,6 +1123,17 @@ ${lines.join("\n")}
     `;
     openDrawer("Fonts List", "Typography usage diagnostics", contentHTML);
   }
+  var init_list_fonts = __esm({
+    "src/features/list-fonts.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/color-picker.js
   function setupColorPicker() {
@@ -1099,6 +1197,17 @@ ${lines.join("\n")}
     }
     drawColorPickerDrawer();
   }
+  var init_color_picker = __esm({
+    "src/features/color-picker.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/color-palette.js
   function setupColorPalette() {
@@ -1164,6 +1273,17 @@ ${lines.join("\n")}
       });
     });
   }
+  var init_color_palette = __esm({
+    "src/features/color-palette.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/extract-images.js
   function setupExtractImages() {
@@ -1228,7 +1348,7 @@ ${lines.join("\n")}
         <div class="img-card" style="background:#15151b; border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; position:relative;">
           <!-- Checkerboard background pattern -->
           <div style="background-image: linear-gradient(45deg, #1c1c24 25%, transparent 25%), linear-gradient(-45deg, #1c1c24 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1c1c24 75%), linear-gradient(-45deg, transparent 75%, #1c1c24 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px; height:120px; display:flex; justify-content:center; align-items:center; position:relative;">
-            <img src="${img.src}" style="max-width:100%; max-height:100%; object-fit:contain;" onload="this.setAttribute('data-loaded', 'true'); this.parentElement.nextElementSibling.querySelector('.img-res').textContent = this.naturalWidth + 'x' + this.naturalHeight;" />
+            <img src="${img.src}" style="max-width:100%; max-height:100%; object-fit:contain;" />
             <button style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.5); border:none; border-radius:4px; color:#fff; width:24px; height:24px; display:flex; justify-content:center; align-items:center; cursor:pointer;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path></svg>
             </button>
@@ -1249,6 +1369,20 @@ ${lines.join("\n")}
       `).join("");
       slot.querySelector("#images-grid-slot").innerHTML = listHTML || '<div style="font-size:12px; color:var(--text-secondary); text-align:center; padding:20px; grid-column:span 2;">No image resources found matching filters.</div>';
       slot.querySelector("#img-count-slot").textContent = filtered.length;
+      slot.querySelectorAll(".img-card img").forEach((imgEl) => {
+        const updateRes = () => {
+          imgEl.setAttribute("data-loaded", "true");
+          const resLabel = imgEl.parentElement.nextElementSibling.querySelector(".img-res");
+          if (resLabel) {
+            resLabel.textContent = `${imgEl.naturalWidth}x${imgEl.naturalHeight}`;
+          }
+        };
+        if (imgEl.complete) {
+          updateRes();
+        } else {
+          imgEl.onload = updateRes;
+        }
+      });
       slot.querySelectorAll(".extract-img-copy-btn").forEach((btn) => {
         btn.onclick = () => {
           navigator.clipboard.writeText(btn.getAttribute("data-url"));
@@ -1258,30 +1392,16 @@ ${lines.join("\n")}
       slot.querySelectorAll(".extract-img-open-btn").forEach((btn) => {
         btn.onclick = () => window.open(btn.getAttribute("data-url"), "_blank");
       });
-      slot.querySelectorAll(".extract-img-dl-btn").forEach((btn) => {
-        btn.onclick = async () => {
+      slot.querySelectorAll(".extract-img-dl-btn").forEach((btn, idx) => {
+        btn.onclick = () => {
           const url = btn.getAttribute("data-url");
-          try {
-            const res = await fetch(url);
-            const blob = await res.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = blobUrl;
-            a.download = `extracted_image_${Date.now()}`;
-            a.target = "_blank";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 2e3);
-          } catch (e) {
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `extracted_image_${Date.now()}`;
-            a.target = "_blank";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }
+          const ext = url.startsWith("data:image/svg+xml") ? "svg" : "png";
+          chrome.runtime.sendMessage({
+            action: "downloadFile",
+            url,
+            filename: `extracted_image_${Date.now()}_${idx + 1}.${ext}`
+          });
+          showToast("Download started...");
         };
       });
     };
@@ -1370,33 +1490,29 @@ ${lines.join("\n")}
           return true;
         });
         filtered.forEach((img, idx) => {
-          setTimeout(async () => {
-            try {
-              const res = await fetch(img.src);
-              const blob = await res.blob();
-              const blobUrl = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = blobUrl;
-              a.target = "_blank";
-              a.download = `extracted-${img.type}-${idx + 1}`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              setTimeout(() => URL.revokeObjectURL(blobUrl), 2e3);
-            } catch (e) {
-              const a = document.createElement("a");
-              a.href = img.src;
-              a.target = "_blank";
-              a.download = `extracted-${img.type}-${idx + 1}`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            }
-          }, idx * 250);
+          setTimeout(() => {
+            const ext = img.src.startsWith("data:image/svg+xml") ? "svg" : "png";
+            chrome.runtime.sendMessage({
+              action: "downloadFile",
+              url: img.src,
+              filename: `extracted-${img.type}-${idx + 1}.${ext}`
+            });
+          }, idx * 150);
         });
       };
     });
   }
+  var init_extract_images = __esm({
+    "src/features/extract-images.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/move-element.js
   function setupMoveElement() {
@@ -1553,6 +1669,17 @@ ${lines.join("\n")}
       }
     }, true);
   }
+  var init_move_element = __esm({
+    "src/features/move-element.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/delete-element.js
   function setupDeleteElement() {
@@ -1618,6 +1745,17 @@ ${lines.join("\n")}
       drawDeleteDrawer();
     }, true);
   }
+  var init_delete_element = __esm({
+    "src/features/delete-element.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/export-element.js
   function setupExportElement() {
@@ -1741,6 +1879,17 @@ ${lines.join("\n")}
       showToast("Redirected to CodePen!");
     };
   }
+  var init_export_element = __esm({
+    "src/features/export-element.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/page-ruler.js
   function setupPageRuler() {
@@ -1836,6 +1985,17 @@ ${lines.join("\n")}
       useCapture: false
     });
   }
+  var init_page_ruler = __esm({
+    "src/features/page-ruler.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/page-outliner.js
   function setupPageOutliner() {
@@ -1899,6 +2059,17 @@ ${lines.join("\n")}
     drawOutlinerDrawer();
     applyOutlinerBorders();
   }
+  var init_page_outliner = __esm({
+    "src/features/page-outliner.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/image-replacer.js
   function setupImageReplacer() {
@@ -2002,6 +2173,17 @@ ${lines.join("\n")}
     });
     showToast("Image replaced successfully!");
   }
+  var init_image_replacer = __esm({
+    "src/features/image-replacer.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/take-screenshot.js
   function setupTakeScreenshot() {
@@ -2061,18 +2243,19 @@ ${lines.join("\n")}
     overlay.appendChild(closeBtn);
     state.shadowRoot.appendChild(overlay);
   }
+  var init_take_screenshot = __esm({
+    "src/features/take-screenshot.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/responsive-viewer.js
-  var DEVICE_CATALOG = [
-    { id: "iphone-se", name: "iPhone SE", width: 375, height: 667, scale: 0.8 },
-    { id: "iphone-14-pro", name: "iPhone 14 Pro", width: 393, height: 852, scale: 0.7 },
-    { id: "iphone-14-pro-max", name: "iPhone 14 Pro Max", width: 430, height: 932, scale: 0.65 },
-    { id: "pixel-7", name: "Pixel 7", width: 412, height: 915, scale: 0.65 },
-    { id: "ipad-mini", name: "iPad Mini", width: 768, height: 1024, scale: 0.5 },
-    { id: "ipad-pro", name: "iPad Pro", width: 1024, height: 1366, scale: 0.4 },
-    { id: "macbook-air", name: "MacBook Air", width: 1280, height: 832, scale: 0.4 },
-    { id: "desktop-1080p", name: "Desktop 1080p", width: 1920, height: 1080, scale: 0.3 }
-  ];
   function setupResponsiveViewer() {
     let overlay = state.shadowRoot.getElementById("responsive-viewer-overlay");
     if (!overlay) {
@@ -2341,7 +2524,7 @@ ${lines.join("\n")}
       state.shadowRoot.appendChild(overlay);
       overlay.querySelector("#rv-exit-btn").onclick = () => {
         overlay.style.display = "none";
-        deactivateCurrentTool2();
+        deactivateCurrentTool();
       };
       overlay.querySelector("#rv-exit-btn").onmouseenter = (e) => e.target.style.background = "rgba(255,255,255,0.1)";
       overlay.querySelector("#rv-exit-btn").onmouseleave = (e) => e.target.style.background = "rgba(255,255,255,0.05)";
@@ -2350,11 +2533,122 @@ ${lines.join("\n")}
       overlay.style.display = "flex";
     }
   }
+  var DEVICE_CATALOG;
+  var init_responsive_viewer = __esm({
+    "src/features/responsive-viewer.js"() {
+      init_state();
+      init_hud();
+      init_tool_manager();
+      DEVICE_CATALOG = [
+        { id: "iphone-se", name: "iPhone SE", width: 375, height: 667, scale: 0.8 },
+        { id: "iphone-14-pro", name: "iPhone 14 Pro", width: 393, height: 852, scale: 0.7 },
+        { id: "iphone-14-pro-max", name: "iPhone 14 Pro Max", width: 430, height: 932, scale: 0.65 },
+        { id: "pixel-7", name: "Pixel 7", width: 412, height: 915, scale: 0.65 },
+        { id: "ipad-mini", name: "iPad Mini", width: 768, height: 1024, scale: 0.5 },
+        { id: "ipad-pro", name: "iPad Pro", width: 1024, height: 1366, scale: 0.4 },
+        { id: "macbook-air", name: "MacBook Air", width: 1280, height: 832, scale: 0.4 },
+        { id: "desktop-1080p", name: "Desktop 1080p", width: 1920, height: 1080, scale: 0.3 }
+      ];
+    }
+  });
 
   // src/features/settings.js
   function setupSettings() {
     let modal = state.shadowRoot.getElementById("settings-modal-overlay");
     if (!modal) {
+      let initPaneSettings2 = function(p, tabLabel) {
+        if (tabLabel === "Account") {
+          initAccountPane(p);
+          return;
+        }
+        const elements = p.querySelectorAll("[data-setting]");
+        if (elements.length === 0) return;
+        const keys = Array.from(elements).map((el) => el.getAttribute("data-setting"));
+        chrome.storage.local.get(keys, (res) => {
+          elements.forEach((el) => {
+            const key = el.getAttribute("data-setting");
+            const savedVal = res[key];
+            const defaultVal = defaultSettings[key];
+            const currentVal = savedVal !== void 0 ? savedVal : defaultVal;
+            if (el.type === "checkbox") {
+              el.checked = !!currentVal;
+            } else if (el.tagName === "SELECT") {
+              el.value = currentVal;
+            }
+            el.onchange = (e) => {
+              const val = el.type === "checkbox" ? el.checked : el.value;
+              chrome.storage.local.set({ [key]: val }, () => {
+                showToast(`Saved setting: ${key.replace(/([A-Z])/g, " $1")}`);
+                if (key === "sidebarPosition") {
+                  Promise.resolve().then(() => (init_hud(), hud_exports)).then((m) => m.setSidebarPosition(val));
+                }
+              });
+            };
+          });
+        });
+      }, initAccountPane = function(p) {
+        const statusContainer = p.querySelector("#license-status-container");
+        const input = p.querySelector("#settings-license-input");
+        const btn = p.querySelector("#settings-license-btn");
+        function renderStatus() {
+          chrome.storage.local.get(["premium", "licenseKey"], (res) => {
+            const isPro = res.premium !== false;
+            const key = res.licenseKey || "";
+            input.value = key;
+            if (isPro) {
+              statusContainer.innerHTML = `
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
+                  <div style="font-size: 12px; color: var(--text-secondary);">
+                    <span style="color: #4ade80; font-weight: 600;">SuperDev Pro Active</span> \xB7 Lifetime License \xB7 1/3 devices
+                  </div>
+                </div>
+              `;
+              btn.textContent = "Deactivate";
+              btn.style.background = "rgba(239, 68, 68, 0.2)";
+              btn.style.border = "1px solid rgba(239, 68, 68, 0.4)";
+              btn.style.color = "#ef4444";
+            } else {
+              statusContainer.innerHTML = `
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
+                  <div style="font-size: 12px; color: var(--text-secondary);">
+                    <span style="color: var(--text-secondary); font-weight: 500;">Free Version (Limited Features)</span>
+                  </div>
+                </div>
+              `;
+              btn.textContent = "Activate";
+              btn.style.background = "var(--accent-purple)";
+              btn.style.border = "none";
+              btn.style.color = "#000";
+            }
+          });
+        }
+        btn.onclick = () => {
+          chrome.storage.local.get(["premium"], (res) => {
+            const isPro = res.premium !== false;
+            if (isPro) {
+              chrome.storage.local.set({ premium: false, licenseKey: "" }, () => {
+                showToast("Pro license deactivated.");
+                state.isPremium = false;
+                renderStatus();
+              });
+            } else {
+              const key = input.value.trim().toUpperCase();
+              if (key === "WEBDEVPRO2026") {
+                chrome.storage.local.set({ premium: true, licenseKey: key }, () => {
+                  showToast("SuperDev Pro activated successfully!");
+                  state.isPremium = true;
+                  renderStatus();
+                });
+              } else {
+                showToast("Invalid key. Try WEBDEVPRO2026");
+              }
+            }
+          });
+        };
+        renderStatus();
+      };
       modal = document.createElement("div");
       modal.id = "settings-modal-overlay";
       modal.style.position = "fixed";
@@ -2449,20 +2743,44 @@ ${lines.join("\n")}
         </div>
       `;
       state.shadowRoot.appendChild(modal);
-      const contentPanes = {
+      const defaultSettings = {
+        licenseKey: "",
+        theme: "dark",
+        sidebarPosition: "right",
+        colorFormat: "hex",
+        colorAutoCopy: true,
+        extractBgImages: true,
+        extractMetaTags: true,
+        extractZip: false,
+        screenshotFormat: "png",
+        screenshotAutoDownload: true,
+        markdownImages: true,
+        markdownTables: true,
+        pdfStripStyle: true,
+        exportInlineCSS: true,
+        exportPrettier: false,
+        aiModel: "gpt-4o",
+        cssHighlightBoxModel: true,
+        deleteConfirm: true,
+        jsonIndent: "2",
+        tabSuspend: true,
+        readerFont: "serif",
+        clock24h: true
+      };
+      const contentPanes2 = {
         "Account": `
           <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Account</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Sign in or paste a license key to unlock every premium tool.</p>
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">
-                <span style="color: #fff; font-weight: 500;">Anmol Agarwal</span> \xB7 Lifetime \xB7 1/3 devices \xB7 aa577@expert.micro1.ai
-              </div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Manage your SuperDev Pro license key.</p>
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap:16px;">
+            <div id="license-status-container">
+              <!-- Dynamically loaded -->
             </div>
-            <button style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.2s;">
-              Sign out
-            </button>
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="settings-license-input" placeholder="Enter License Key (e.g. WEBDEVPRO2026)" style="flex:1; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px 12px; color:#fff; font-size:12px; outline:none;" />
+              <button id="settings-license-btn" style="border: none; border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;">
+                Verify
+              </button>
+            </div>
           </div>
         `,
         "Appearance": `
@@ -2474,10 +2792,10 @@ ${lines.join("\n")}
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Theme</div>
                 <div style="font-size:12px; color:var(--text-secondary);">Choose your preferred color scheme.</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>Dark Mode (Default)</option>
-                <option>Light Mode</option>
-                <option>System Auto</option>
+              <select data-setting="theme" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="dark">Dark Mode (Default)</option>
+                <option value="light">Light Mode</option>
+                <option value="system">System Auto</option>
               </select>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
@@ -2485,9 +2803,9 @@ ${lines.join("\n")}
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Sidebar Position</div>
                 <div style="font-size:12px; color:var(--text-secondary);">Default docking side for the main HUD.</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>Right (Default)</option>
-                <option>Left</option>
+              <select data-setting="sidebarPosition" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="right">Right (Default)</option>
+                <option value="left">Left</option>
               </select>
             </div>
           </div>
@@ -2501,14 +2819,14 @@ ${lines.join("\n")}
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Default Color Format</div>
                 <div style="font-size:12px; color:var(--text-secondary);">Format copied to clipboard on click.</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>HEX (#FFFFFF)</option>
-                <option>RGB (rgb(255,255,255))</option>
-                <option>HSL (hsl(0,0%,100%))</option>
+              <select data-setting="colorFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="hex">HEX (#FFFFFF)</option>
+                <option value="rgb">RGB (rgb(255,255,255))</option>
+                <option value="hsl">HSL (hsl(0,0%,100%))</option>
               </select>
             </div>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Auto-copy to clipboard on click
+              <input type="checkbox" data-setting="colorAutoCopy" /> Auto-copy to clipboard on click
             </label>
           </div>
         `,
@@ -2517,13 +2835,13 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure media scraping defaults.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Capture background-image CSS properties
+              <input type="checkbox" data-setting="extractBgImages" /> Capture background-image CSS properties
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Capture Favicons & OG Meta tags
+              <input type="checkbox" data-setting="extractMetaTags" /> Capture Favicons & OG Meta tags
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" /> Zip downloads automatically
+              <input type="checkbox" data-setting="extractZip" /> Zip downloads automatically
             </label>
           </div>
         `,
@@ -2535,14 +2853,14 @@ ${lines.join("\n")}
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Format</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>PNG (High Quality)</option>
-                <option>JPEG (Smaller Size)</option>
-                <option>WebP</option>
+              <select data-setting="screenshotFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="png">PNG (High Quality)</option>
+                <option value="jpeg">JPEG (Smaller Size)</option>
+                <option value="webp">WebP</option>
               </select>
             </div>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Auto-download on capture
+              <input type="checkbox" data-setting="screenshotAutoDownload" /> Auto-download on capture
             </label>
           </div>
         `,
@@ -2551,10 +2869,10 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure markdown extraction formatting.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Include images as markdown links
+              <input type="checkbox" data-setting="markdownImages" /> Include images as markdown links
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Preserve table structures
+              <input type="checkbox" data-setting="markdownTables" /> Preserve table structures
             </label>
           </div>
         `,
@@ -2563,7 +2881,7 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure PDF print properties.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Strip unnecessary styling (Reader view)
+              <input type="checkbox" data-setting="pdfStripStyle" /> Strip unnecessary styling (Reader view)
             </label>
           </div>
         `,
@@ -2572,10 +2890,10 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure element bundle extraction.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Inline CSS into style tags
+              <input type="checkbox" data-setting="exportInlineCSS" /> Inline CSS into style tags
             </label>
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" /> Pre-format using Prettier
+              <input type="checkbox" data-setting="exportPrettier" /> Pre-format using Prettier
             </label>
           </div>
         `,
@@ -2587,9 +2905,9 @@ ${lines.join("\n")}
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Language Model</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>GPT-4o (Premium)</option>
-                <option>Claude 3.5 Sonnet</option>
+              <select data-setting="aiModel" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="gpt-4o">GPT-4o (Premium)</option>
+                <option value="claude-3-5">Claude 3.5 Sonnet</option>
               </select>
             </div>
           </div>
@@ -2599,7 +2917,7 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure layout overlays and property formats.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Highlight element box-model on hover
+              <input type="checkbox" data-setting="cssHighlightBoxModel" /> Highlight element box-model on hover
             </label>
           </div>
         `,
@@ -2608,7 +2926,7 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configuration for element deletion tool.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Require confirmation for container nodes
+              <input type="checkbox" data-setting="deleteConfirm" /> Require confirmation for container nodes
             </label>
           </div>
         `,
@@ -2620,10 +2938,10 @@ ${lines.join("\n")}
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Indentation Space</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>2 Spaces</option>
-                <option>4 Spaces</option>
-                <option>Tabs</option>
+              <select data-setting="jsonIndent" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="2">2 Spaces</option>
+                <option value="4">4 Spaces</option>
+                <option value="tabs">Tabs</option>
               </select>
             </div>
           </div>
@@ -2633,7 +2951,7 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure tab suspended and memory management.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Automatically suspend inactive tabs after 15 mins
+              <input type="checkbox" data-setting="tabSuspend" /> Automatically suspend inactive tabs after 15 mins
             </label>
           </div>
         `,
@@ -2645,9 +2963,9 @@ ${lines.join("\n")}
               <div>
                 <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Font Preference</div>
               </div>
-              <select style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option>Serif (Georgia)</option>
-                <option>Sans-Serif (Inter)</option>
+              <select data-setting="readerFont" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+                <option value="serif">Serif (Georgia)</option>
+                <option value="sans">Sans-Serif (Inter)</option>
               </select>
             </div>
           </div>
@@ -2657,7 +2975,7 @@ ${lines.join("\n")}
           <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure timezone defaults.</p>
           <div style="display:flex; flex-direction:column; gap:16px;">
             <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" checked /> Use 24-hour time format
+              <input type="checkbox" data-setting="clock24h" /> Use 24-hour time format
             </label>
           </div>
         `
@@ -2670,7 +2988,8 @@ ${lines.join("\n")}
         </div>
       `;
       const pane = modal.querySelector("#settings-content-pane");
-      pane.innerHTML = contentPanes["Account"];
+      pane.innerHTML = contentPanes2["Account"];
+      initPaneSettings2(pane, "Account");
       const navBtns = modal.querySelectorAll(".settings-nav-btn");
       navBtns.forEach((btn) => {
         btn.onclick = () => {
@@ -2683,17 +3002,32 @@ ${lines.join("\n")}
           btn.style.background = "rgba(255,255,255,0.05)";
           btn.style.color = "#fff";
           const label = btn.textContent.trim();
-          pane.innerHTML = contentPanes[label] || defaultContent.replace("Settings panel", label + " settings");
+          pane.innerHTML = contentPanes2[label] || defaultContent.replace("Settings panel", label + " settings");
+          initPaneSettings2(pane, label);
         };
       });
       modal.querySelector("#settings-close-btn").onclick = () => {
         modal.style.display = "none";
-        deactivateCurrentTool2();
+        deactivateCurrentTool();
       };
     } else {
       modal.style.display = "flex";
+      const pane = modal.querySelector("#settings-content-pane");
+      pane.innerHTML = contentPanes["Account"];
+      initPaneSettings(pane, "Account");
     }
   }
+  var init_settings = __esm({
+    "src/features/settings.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/tech-stack.js
   function setupTechStack() {
@@ -2757,22 +3091,38 @@ ${lines.join("\n")}
     stackHTML += `</div>`;
     openDrawer("Site Stack", "Web Tech Stack Analyzer", stackHTML);
   }
+  var init_tech_stack = __esm({
+    "src/features/tech-stack.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/seo-meta.js
   function setupSeoMeta() {
-    const title = document.title || "No Title Tag Detected";
-    const desc = document.querySelector('meta[name="description"]')?.content || "No Meta Description Tag Found";
-    const canonical = document.querySelector('link[rel="canonical"]')?.href || window.location.href;
-    const robots = document.querySelector('meta[name="robots"]')?.content || "index, follow";
+    const rawTitle = document.title || "No Title Tag Detected";
+    const rawDesc = document.querySelector('meta[name="description"]')?.content || "No Meta Description Tag Found";
+    const rawCanonical = document.querySelector('link[rel="canonical"]')?.href || window.location.href;
+    const rawRobots = document.querySelector('meta[name="robots"]')?.content || "index, follow";
+    const title = escapeHTML(rawTitle);
+    const desc = escapeHTML(rawDesc);
+    const canonical = escapeHTML(rawCanonical);
+    const robots = escapeHTML(rawRobots);
     const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6"));
     const h1Count = headings.filter((h) => h.tagName.toLowerCase() === "h1").length;
     let hOutlineHTML = `<div style="max-height: 200px; overflow-y:auto; padding:6px; background:rgba(0,0,0,0.2); border-radius:6px; font-family:monospace; font-size:11px;">`;
     headings.forEach((h) => {
       const pad = (parseInt(h.tagName.charAt(1)) - 1) * 8;
+      const headingText = escapeHTML(h.innerText.trim() || "(empty)");
       hOutlineHTML += `
         <div style="padding-left: ${pad}px; margin-bottom: 4px; border-left:1px solid rgba(255,255,255,0.05);">
           <span style="color:var(--accent-purple); font-weight:700; margin-right:4px;">${h.tagName}</span>
-          <span style="color:var(--text-primary);">${h.innerText.trim() || "(empty)"}</span>
+          <span style="color:var(--text-primary);">${headingText}</span>
         </div>
       `;
     });
@@ -2781,14 +3131,14 @@ ${lines.join("\n")}
       <div style="font-size:11px; color:var(--text-secondary); margin-bottom:14px;">Webpage SEO diagnostics audit:</div>
       
       <!-- Title Card -->
-      <div class="audit-card ${title ? "audit-success" : "audit-warning"}">
-        <div class="audit-card-title">\u{1F4DD} Page Title (${title.length} chars)</div>
+      <div class="audit-card ${rawTitle ? "audit-success" : "audit-warning"}">
+        <div class="audit-card-title">\u{1F4DD} Page Title (${rawTitle.length} chars)</div>
         <div class="audit-card-desc" style="font-weight:600; color:var(--text-primary); margin-top:4px;">${title}</div>
       </div>
 
       <!-- Description Card -->
-      <div class="audit-card ${desc.startsWith("No") ? "audit-warning" : "audit-success"}">
-        <div class="audit-card-title">\u{1F3F7}\uFE0F Meta Description (${desc.length} chars)</div>
+      <div class="audit-card ${rawDesc.startsWith("No") ? "audit-warning" : "audit-success"}">
+        <div class="audit-card-title">\u{1F3F7}\uFE0F Meta Description (${rawDesc.length} chars)</div>
         <div class="audit-card-desc" style="margin-top:4px;">${desc}</div>
       </div>
 
@@ -2798,7 +3148,7 @@ ${lines.join("\n")}
         <div class="seo-preview-box">
           <div class="seo-preview-url">${canonical}</div>
           <h3 class="seo-preview-title">${title}</h3>
-          <p class="seo-preview-desc">${desc.length > 150 ? desc.slice(0, 147) + "..." : desc}</p>
+          <p class="seo-preview-desc">${rawDesc.length > 150 ? desc.slice(0, 147) + "..." : desc}</p>
         </div>
       </div>
 
@@ -2814,6 +3164,17 @@ ${lines.join("\n")}
     `;
     openDrawer("SEO Meta", "SEO tags diagnostics", seoHTML);
   }
+  var init_seo_meta = __esm({
+    "src/features/seo-meta.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/features/a11y-audit.js
   function setupA11yAudit() {
@@ -2871,10 +3232,21 @@ ${lines.join("\n")}
     `;
     openDrawer("Accessibility", "WCAG accessibility checker", a11yHTML);
   }
+  var init_a11y_audit = __esm({
+    "src/features/a11y-audit.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/core/tool-manager.js
-  function activateTool2(tool) {
-    deactivateCurrentTool2();
+  function activateTool(tool) {
+    deactivateCurrentTool();
     ensureHUD();
     state.activeTool = tool;
     updateSidebarActiveBtn();
@@ -2941,7 +3313,7 @@ ${lines.join("\n")}
     }
     showToast(`Enabled: ${tool.replace(/-/g, " ").toUpperCase()}`);
   }
-  function deactivateCurrentTool2() {
+  function deactivateCurrentTool() {
     if (!state.activeTool) return;
     cleanupListeners();
     hideHighlight();
@@ -2958,6 +3330,12 @@ ${lines.join("\n")}
     if (state.selectedElementForMove) {
       state.selectedElementForMove.style.outline = "";
       state.selectedElementForMove = null;
+    }
+    if (state.shadowRoot) {
+      const settingsModal = state.shadowRoot.getElementById("settings-modal-overlay");
+      if (settingsModal) settingsModal.style.display = "none";
+      const rvOverlay = state.shadowRoot.getElementById("responsive-viewer-overlay");
+      if (rvOverlay) rvOverlay.style.display = "none";
     }
     showToast(`Disabled: ${state.activeTool.replace(/-/g, " ").toUpperCase()}`);
     state.activeTool = null;
@@ -3029,7 +3407,7 @@ ${lines.join("\n")}
           showPremiumLockedDrawer(activeCmd.id);
           return;
         }
-        activateTool2(activeCmd.id);
+        activateTool(activeCmd.id);
       }
     }
     input.oninput = (e) => {
@@ -3070,6 +3448,34 @@ ${lines.join("\n")}
     };
     drawCommands();
   }
+  var init_tool_manager = __esm({
+    "src/core/tool-manager.js"() {
+      init_state();
+      init_hud();
+      init_highlight();
+      init_drawer();
+      init_toast();
+      init_css_inspector();
+      init_live_text_editor();
+      init_fonts_changer();
+      init_list_fonts();
+      init_color_picker();
+      init_color_palette();
+      init_extract_images();
+      init_move_element();
+      init_delete_element();
+      init_export_element();
+      init_page_ruler();
+      init_page_outliner();
+      init_image_replacer();
+      init_take_screenshot();
+      init_responsive_viewer();
+      init_settings();
+      init_tech_stack();
+      init_seo_meta();
+      init_a11y_audit();
+    }
+  });
 
   // src/features/dashboard.js
   function openDashboardDrawer() {
@@ -3098,8 +3504,30 @@ ${lines.join("\n")}
     `;
     openDrawer("WebDev Pro Dashboard", "Premium developer toolbar features", welcomeHTML);
   }
+  var init_dashboard = __esm({
+    "src/features/dashboard.js"() {
+      init_state();
+      init_drawer();
+      init_hud();
+      init_toast();
+      init_highlight();
+      init_tool_manager();
+      init_utils();
+    }
+  });
 
   // src/ui/hud.js
+  var hud_exports = {};
+  __export(hud_exports, {
+    applyDrawerPositionClass: () => applyDrawerPositionClass,
+    ensureHUD: () => ensureHUD,
+    loadPersistentSettings: () => loadPersistentSettings,
+    setSidebarPosition: () => setSidebarPosition,
+    setSidebarVisible: () => setSidebarVisible,
+    setupSidebarEvents: () => setupSidebarEvents,
+    toggleSidebarVisibility: () => toggleSidebarVisibility,
+    updateSidebarActiveBtn: () => updateSidebarActiveBtn
+  });
   function ensureHUD() {
     if (state.hostEl) return;
     state.hostEl = document.createElement("div");
@@ -4812,11 +5240,11 @@ ${lines.join("\n")}
     applyDrawerPositionClass(pos);
     closeDrawer();
   }
-  function toggleSidebarVisibility2() {
+  function toggleSidebarVisibility() {
     ensureHUD();
-    setSidebarVisible2(!state.sidebarVisible);
+    setSidebarVisible(!state.sidebarVisible);
   }
-  function setSidebarVisible2(visible) {
+  function setSidebarVisible(visible) {
     state.sidebarVisible = visible;
     if (visible) {
       state.sidebarEl.classList.remove("sidebar-hidden");
@@ -4829,10 +5257,10 @@ ${lines.join("\n")}
   }
   function setupSidebarEvents() {
     state.reopenTabEl.addEventListener("click", () => {
-      setSidebarVisible2(true);
+      setSidebarVisible(true);
     });
     state.shadowRoot.getElementById("sbtn-collapse").addEventListener("click", () => {
-      setSidebarVisible2(false);
+      setSidebarVisible(false);
     });
     state.shadowRoot.getElementById("sbtn-settings-position").addEventListener("click", () => {
       const targetPos = state.sidebarPosition === "right" ? "left" : "right";
@@ -4840,7 +5268,7 @@ ${lines.join("\n")}
       showToast(`Docked position: ${targetPos.toUpperCase()}`);
     });
     state.shadowRoot.getElementById("drawer-close-btn").addEventListener("click", () => {
-      closeDrawer();
+      deactivateCurrentTool();
     });
     state.shadowRoot.getElementById("sbtn-dashboard").addEventListener("click", () => {
       openDashboardDrawer();
@@ -4874,32 +5302,25 @@ ${lines.join("\n")}
       state.shadowRoot.getElementById(tool.btnId).addEventListener("click", () => {
         const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
         if (premiumTools.includes(tool.id) && !state.isPremium) {
+          deactivateCurrentTool();
           showPremiumLockedDrawer(tool.id);
+          state.activeTool = tool.id;
+          updateSidebarActiveBtn();
           return;
         }
         if (state.activeTool === tool.id) {
-          if (state.drawerEl && !state.drawerEl.classList.contains("visible")) {
+          const isOverlayTool = ["settings", "responsive-viewer"].includes(tool.id);
+          if (!isOverlayTool && state.drawerEl && !state.drawerEl.classList.contains("visible")) {
             state.drawerEl.classList.add("visible");
           } else {
-            deactivateCurrentTool2();
+            deactivateCurrentTool();
           }
         } else {
-          activateTool2(tool.id);
+          activateTool(tool.id);
         }
       });
     });
   }
-  document.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
-      e.preventDefault();
-      toggleSidebarVisibility2();
-    }
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
-      e.preventDefault();
-      ensureHUD();
-      openCommandPalette();
-    }
-  });
   function updateSidebarActiveBtn() {
     if (!state.sidebarEl) return;
     state.sidebarEl.querySelectorAll(".sidebar-btn").forEach((btn) => {
@@ -4910,31 +5331,65 @@ ${lines.join("\n")}
       if (activeBtn) activeBtn.classList.add("active-tool");
     }
   }
+  var init_hud = __esm({
+    "src/ui/hud.js"() {
+      init_state();
+      init_tool_manager();
+      init_drawer();
+      init_dashboard();
+      init_toast();
+      document.addEventListener("keydown", (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+          e.preventDefault();
+          toggleSidebarVisibility();
+        }
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+          e.preventDefault();
+          ensureHUD();
+          openCommandPalette();
+        }
+      });
+    }
+  });
 
   // src/content.js
+  init_state();
+  init_hud();
+  init_tool_manager();
   ensureHUD();
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
-    if (req.action === "toggle-sidebar") {
-      if (state.sidebarEl) {
-        if (state.isSidebarOpen) {
-          state.sidebarEl.style.transform = "translateX(-120%)";
-          state.sidebarEl.style.opacity = "0";
-          state.isSidebarOpen = false;
-          deactivateCurrentTool2();
-        } else {
-          state.sidebarEl.style.transform = "translateX(0)";
-          state.sidebarEl.style.opacity = "1";
-          state.isSidebarOpen = true;
-        }
-      }
-    } else if (req.action === "activate-tool") {
-      if (!state.isSidebarOpen && state.sidebarEl) {
-        state.sidebarEl.style.transform = "translateX(0)";
-        state.sidebarEl.style.opacity = "1";
-        state.isSidebarOpen = true;
-      }
-      activateTool2(req.tool);
+    if (req.action === "toggle-sidebar" || req.action === "toggleSidebarShortcut") {
+      toggleSidebarVisibility();
+      sendResponse({ status: "success" });
+      return true;
     }
-    sendResponse({ status: "ok" });
+    if (req.action === "activate-tool") {
+      ensureHUD();
+      if (!state.sidebarVisible) {
+        setSidebarVisible(true);
+      }
+      activateTool(req.tool);
+      sendResponse({ status: "success" });
+      return true;
+    }
+    if (req.action === "getActiveTool") {
+      sendResponse({ activeTool: state.activeTool });
+      return true;
+    }
+    if (req.action === "toggleTool") {
+      state.isPremium = !!req.premium;
+      ensureHUD();
+      if (!state.sidebarVisible) {
+        setSidebarVisible(true);
+      }
+      if (state.activeTool === req.tool) {
+        deactivateCurrentTool();
+        sendResponse({ status: "success", isActive: false });
+      } else {
+        activateTool(req.tool);
+        sendResponse({ status: "success", isActive: true });
+      }
+      return true;
+    }
   });
 })();
