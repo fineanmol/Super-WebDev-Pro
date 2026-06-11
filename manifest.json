@@ -2,11 +2,26 @@
   "manifest_version": 3,
   "name": "Super Web Dev Extension",
   "version": "1.0",
-  "description": "A comprehensive extension with tools for web developers.",
+  "description": "A premium developer toolkit for inspecting CSS, live text editing, font styling, color picking, element exports, measuring pixels, image extraction, and instant screenshots.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "host_permissions": ["*://*/*"],
   "background": {
     "service_worker": "background.js"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      }
+    },
+    "toggle-sidebar": {
+      "description": "Toggle SuperDev sidebar",
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      }
+    }
   },
   "content_scripts": [
     {
@@ -21,5 +36,12 @@
       "48": "assets/icon48.png",
       "128": "assets/icon128.png"
     }
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
   }
 }
+
+

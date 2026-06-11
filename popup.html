@@ -2,40 +2,187 @@
 <html>
 
 <head>
-  <title>Super WebDev Extension</title>
+  <meta charset="utf-8">
+  <title>Super WebDev Pro</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
   <div class="container">
+    <!-- Header -->
     <div class="header">
-      <h1>Super WebDev </h1>
-      <div class="icons">
-        <span class="icon">&#x21BB;</span>
-        <span class="icon">&#x2139;</span>
-        <span class="icon">&#x1F6D2;</span>
-        <span class="icon">&#x2795;</span>
-        <span class="icon">&#x2796;</span>
-        <span class="icon">&#x2715;</span>
+      <div>
+        <div class="header-title-container">
+          <span class="header-logo">⚡</span>
+          <h1>SuperDev Pro</h1>
+        </div>
+        <p class="header-subtitle">All-in-one Browser DevTools</p>
+      </div>
+      <span id="premium-badge" class="premium-badge-header">PRO</span>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="tabs">
+      <button id="tab-tools" class="tab-button active">
+        <span>🛠️</span> Tools
+      </button>
+      <button id="tab-premium" class="tab-button">
+        <span>✨</span> Premium
+      </button>
+    </div>
+
+    <!-- Status Alerts -->
+    <div id="status-alert" class="status-msg"></div>
+
+    <!-- Tab 1: Tools Grid -->
+    <div id="content-tools" class="tab-content active">
+      <!-- Category 1: Inspect & Edit -->
+      <div class="category-section">
+        <h2 class="category-title">Inspect & Edit</h2>
+        <div class="features-grid">
+          <button id="css-inspector" class="feature-button" data-premium="false">
+            <span class="icon">🔍</span>
+            <span>CSS Inspector</span>
+          </button>
+          <button id="live-text-editor" class="feature-button" data-premium="false">
+            <span class="icon">📝</span>
+            <span>Text Editor</span>
+          </button>
+          <button id="export-element" class="feature-button" data-premium="true">
+            <span class="icon">📤</span>
+            <span>Export Element</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+          <button id="image-replacer" class="feature-button" data-premium="true">
+            <span class="icon">🔄</span>
+            <span>Image Swap</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Category 2: Colors & Typography -->
+      <div class="category-section">
+        <h2 class="category-title">Colors & Fonts</h2>
+        <div class="features-grid">
+          <button id="color-picker" class="feature-button" data-premium="false">
+            <span class="icon">🎨</span>
+            <span>Color Picker</span>
+          </button>
+          <button id="color-palette" class="feature-button" data-premium="true">
+            <span class="icon">🌈</span>
+            <span>Color Palette</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+          <button id="fonts-changer" class="feature-button" data-premium="true">
+            <span class="icon">🔤</span>
+            <span>Font Changer</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+          <button id="list-fonts" class="feature-button" data-premium="false">
+            <span class="icon">📋</span>
+            <span>List Fonts</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Category 3: Layout & Actions -->
+      <div class="category-section">
+        <h2 class="category-title">Layout & Screenshot</h2>
+        <div class="features-grid">
+          <button id="page-ruler" class="feature-button" data-premium="true">
+            <span class="icon">📏</span>
+            <span>Page Ruler</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+          <button id="page-outliner" class="feature-button" data-premium="false">
+            <span class="icon">🔲</span>
+            <span>Outliner</span>
+          </button>
+          <button id="move-element" class="feature-button" data-premium="true">
+            <span class="icon">🖱️</span>
+            <span>Move Element</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+          <button id="delete-element" class="feature-button" data-premium="false">
+            <span class="icon">🗑️</span>
+            <span>Delete Element</span>
+          </button>
+          <button id="extract-images" class="feature-button" data-premium="true">
+            <span class="icon">🖼️</span>
+            <span>Extract Images</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+          <button id="take-screenshot" class="feature-button" data-premium="true">
+            <span class="icon">📸</span>
+            <span>Screenshot</span>
+            <span class="pro-badge">PRO</span>
+          </button>
+        </div>
       </div>
     </div>
-    <div id="features">
-      <button id="css-inspector" class="feature-button"><span class="icon">&#x1F4BB;</span> CSS Inspector</button>
-      <button id="live-text-editor" class="feature-button"><span class="icon">&#x1F4DD;</span> Live Text Editor</button>
-      <button id="fonts-changer" class="feature-button"><span class="icon">&#x1F510;</span> Fonts Changer</button>
-      <button id="list-fonts" class="feature-button"><span class="icon">&#x1F4D6;</span> List All Fonts</button>
-      <button id="color-picker" class="feature-button"><span class="icon">&#x1F3A8;</span> Color Picker</button>
-      <button id="color-palette" class="feature-button"><span class="icon">&#x1F3A9;</span> Color Palette</button>
-      <button id="move-element" class="feature-button"><span class="icon">&#x1F5C3;</span> Move Element</button>
-      <button id="delete-element" class="feature-button"><span class="icon">&#x1F5D1;</span> Delete Element</button>
-      <button id="export-element" class="feature-button"><span class="icon">&#x1F4E4;</span> Export Element</button>
-      <button id="extract-images" class="feature-button"><span class="icon">&#x1F5BC;</span> Extract Images</button>
-      <button id="page-ruler" class="feature-button"><span class="icon">&#x1F4CF;</span> Page Ruler</button>
-      <button id="page-outliner" class="feature-button"><span class="icon">&#x1F5D2;</span> Page Outliner</button>
-      <button id="image-replacer" class="feature-button"><span class="icon">&#x1F5BC;</span> Image Replacer</button>
-      <button id="take-screenshot" class="feature-button"><span class="icon">&#x1F5BC;</span> Take Screenshot</button>
+
+    <!-- Tab 2: Premium & Settings -->
+    <div id="content-premium" class="tab-content">
+      <!-- Premium Locked State -->
+      <div id="premium-locked-card" class="premium-card">
+        <div class="premium-title">Unlock Super WebDev Pro</div>
+        <p class="premium-desc">
+          Get unlimited access to advanced CSS style editing, image extraction, element positioning, page measurement, CodePen exporting, and full-page screenshots.
+        </p>
+        <button id="btn-upgrade" class="upgrade-btn">
+          ✨ Unlock Premium — $4.99
+        </button>
+
+        <div class="promo-container">
+          <span class="promo-label">Have an activation license key?</span>
+          <div class="promo-input-group">
+            <input type="text" id="promo-code" class="promo-input" placeholder="e.g. WEBDEVPRO2026">
+            <button id="btn-promo" class="promo-btn">Activate</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Premium Unlocked State -->
+      <div id="premium-unlocked-card" class="premium-card-unlocked">
+        <div class="premium-title-unlocked">🎉 Pro Version Active</div>
+        <p class="premium-desc">
+          Thank you for supporting Super WebDev! All 14 professional designer tools are fully unlocked. You have lifetime access.
+        </p>
+        <button id="btn-downgrade" class="promo-btn" style="width: 100%; border-color: rgba(244, 63, 94, 0.2); color: var(--accent-rose);">
+          Reset to Free Version
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer Links -->
+    <div class="footer" style="flex-direction: column; gap: 6px; align-items: stretch; text-align: center;">
+      <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">
+        💡 Press <b>Cmd+Shift+E</b> to toggle sidebar directly on pages!
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 8px;">
+        <span>v1.0 (Freemium)</span>
+        <a href="privacy-policy.html" target="_blank">Privacy Policy</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Lockout Modal popup -->
+  <div id="lockout-modal" class="lockout-modal">
+    <div class="lockout-content">
+      <span class="lockout-crown">👑</span>
+      <h3 class="lockout-title">Premium Tool Locked</h3>
+      <p class="lockout-desc">
+        This is a Pro feature. Please upgrade to Premium under the "Premium" tab to unlock this and 7 other advanced tools!
+      </p>
+      <div class="lockout-actions">
+        <button id="modal-upgrade-btn" class="upgrade-btn">✨ Go to Upgrade Tab</button>
+        <button id="modal-close-btn" class="modal-close-btn">Close</button>
+      </div>
     </div>
   </div>
+
   <script src="popup.js"></script>
 </body>
 
