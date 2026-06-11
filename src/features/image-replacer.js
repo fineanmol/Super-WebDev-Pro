@@ -114,3 +114,20 @@ export   function renderImageSwapDetailsInDrawer(element, isBg, currentSource) {
 
   // 14. Take Screenshot
 
+
+export function applyImageReplacement(element, isBg, currentSource, newSource) {
+  if (isBg) {
+    element.style.setProperty("background-image", "url('"+newSource+"')", "important");
+  } else {
+    element.src = newSource;
+  }
+  
+  state.undoStacks.swappedImages.push({
+    element,
+    isBg,
+    oldSource: currentSource,
+    newSource: newSource
+  });
+  
+  showToast("Image replaced successfully!");
+}

@@ -1,7 +1,7 @@
 import { state } from '../state.js';
 import { ensureHUD, updateSidebarActiveBtn } from '../ui/hud.js';
 import { hideHighlight } from '../ui/highlight.js';
-import { closeDrawer } from '../ui/drawer.js';
+import { closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
 import { showToast } from '../ui/toast.js';
 import { setupCSSInspector } from '../features/css-inspector.js';
 import { setupLiveTextEditor } from '../features/live-text-editor.js';

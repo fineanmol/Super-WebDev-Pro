@@ -298,6 +298,21 @@
       state.drawerEl.classList.remove("visible");
     }
   }
+  function showPremiumLockedDrawer(toolId) {
+    const html = `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:20px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="1.5" style="margin-bottom:16px;">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <h3 style="font-size:16px; font-weight:600; color:#fff; margin:0 0 8px 0;">Premium Feature</h3>
+        <p style="font-size:12px; color:var(--text-secondary); margin:0 0 24px 0;">
+          The <b>${toolId}</b> tool requires a SuperDev Pro license to unlock.
+        </p>
+        <button class="hud-btn primary" style="width:100%;">Unlock Pro</button>
+      </div>
+    `;
+    openDrawer("Feature Locked", "Pro license required", html);
+  }
 
   // src/ui/toast.js
   function showToast(msg) {
@@ -1973,6 +1988,20 @@ ${lines.join("\n")}
       if (url) applyImageReplacement(element, isBg, currentSource, url);
     };
   }
+  function applyImageReplacement(element, isBg, currentSource, newSource) {
+    if (isBg) {
+      element.style.setProperty("background-image", "url('" + newSource + "')", "important");
+    } else {
+      element.src = newSource;
+    }
+    state.undoStacks.swappedImages.push({
+      element,
+      isBg,
+      oldSource: currentSource,
+      newSource
+    });
+    showToast("Image replaced successfully!");
+  }
 
   // src/features/take-screenshot.js
   function setupTakeScreenshot() {
@@ -3040,6 +3069,34 @@ ${lines.join("\n")}
       }
     };
     drawCommands();
+  }
+
+  // src/features/dashboard.js
+  function openDashboardDrawer() {
+    const welcomeHTML = `
+      <div class="audit-card">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">\u26A1 Welcome to WebDev Pro</div>
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0;">
+          Your premium developer toolbox is fully active. Inspect designs, edit copy, view typography, query technology stacks, and execute visual audits directly on the webpage.
+        </p>
+      </div>
+      <div class="audit-card audit-success" style="margin-top:12px;">
+        <div style="font-size: 12px; font-weight: 700; color:#4ade80; margin-bottom: 4px;">\u{1F511} Premium Key: Active</div>
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0;">
+          All Pro tools are fully unlocked. Licensed under <b>WEBDEVPRO2026</b>.
+        </p>
+      </div>
+      <div style="margin-top: 16px;">
+        <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight:700;">Quick Instructions:</span>
+        <p style="font-size: 11px; line-height: 1.5; color: var(--text-secondary); margin: 0;">
+          \u2022 Click any tool on the sidebar to launch its diagnostic inspector panel.
+          <br>\u2022 Use <b>Cmd+Shift+P</b> (or Ctrl+Shift+P) to open the Command Palette.
+          <br>\u2022 Use <b>Cmd+Shift+E</b> to hide/show the vertical toolbar.
+          <br>\u2022 Switch sidebar position (Left / Right) using the settings gear button.
+        </p>
+      </div>
+    `;
+    openDrawer("WebDev Pro Dashboard", "Premium developer toolbar features", welcomeHTML);
   }
 
   // src/ui/hud.js
@@ -4821,7 +4878,11 @@ ${lines.join("\n")}
           return;
         }
         if (state.activeTool === tool.id) {
-          deactivateCurrentTool2();
+          if (state.drawerEl && !state.drawerEl.classList.contains("visible")) {
+            state.drawerEl.classList.add("visible");
+          } else {
+            deactivateCurrentTool2();
+          }
         } else {
           activateTool2(tool.id);
         }

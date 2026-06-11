@@ -1,6 +1,7 @@
 import { state } from '../state.js';
 import { activateTool, deactivateCurrentTool, openCommandPalette } from '../core/tool-manager.js';
-import { openDrawer, closeDrawer } from './drawer.js';
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from './drawer.js';
+import { openDashboardDrawer } from '../features/dashboard.js';
 import { showToast } from './toast.js';
 
 export   function ensureHUD() {
@@ -1841,7 +1842,11 @@ export   function setupSidebarEvents() {
         }
 
         if (state.activeTool === tool.id) {
-          deactivateCurrentTool();
+          if (state.drawerEl && !state.drawerEl.classList.contains("visible")) {
+            state.drawerEl.classList.add("visible");
+          } else {
+            deactivateCurrentTool();
+          }
         } else {
           activateTool(tool.id);
         }
