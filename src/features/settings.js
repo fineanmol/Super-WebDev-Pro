@@ -171,6 +171,14 @@ export function setupSettings() {
                 <option value="left">Left</option>
               </select>
             </div>
+            
+            <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.08);">
+              <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:#ef4444;">Deactivate Extension</div>
+              <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Completely unload WebDev Pro from this webpage. Press Cmd+Shift+E or click the extension icon to restart it.</div>
+              <button id="settings-deactivate-btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; border-radius:6px; padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer; transition:background 0.2s;">
+                Turn Off WebDev Pro
+              </button>
+            </div>
           </div>
         `,
         "Color Picker": `
@@ -356,6 +364,15 @@ export function setupSettings() {
         if (tabLabel === "Account") {
           initAccountPane(p);
           return;
+        }
+
+        if (tabLabel === "Appearance") {
+          const deactBtn = p.querySelector("#settings-deactivate-btn");
+          if (deactBtn) {
+            deactBtn.onclick = () => {
+              import("../ui/hud.js").then(m => m.destroyHUD());
+            };
+          }
         }
 
         const elements = p.querySelectorAll("[data-setting]");

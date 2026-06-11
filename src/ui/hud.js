@@ -1646,6 +1646,10 @@ export   function ensureHUD() {
         </svg>
         <div class="sidebar-tip">Settings</div>
       </button>
+      <button class="sidebar-btn" id="sbtn-power" title="Turn Off WebDev Pro" style="color: var(--accent-rose);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+        <div class="sidebar-tip">Turn Off WebDev Pro</div>
+      </button>
       <button class="sidebar-btn" id="sbtn-collapse" title="Hide Sidebar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         <div class="sidebar-tip">Hide Sidebar (Cmd+Shift+E)</div>
@@ -1786,6 +1790,11 @@ export   function setupSidebarEvents() {
       setSidebarVisible(false);
     });
 
+    // Turn Off / Power
+    state.shadowRoot.getElementById("sbtn-power").addEventListener("click", () => {
+      destroyHUD();
+    });
+
     // Position Toggle
     state.shadowRoot.getElementById("sbtn-settings-position").addEventListener("click", () => {
       const targetPos = state.sidebarPosition === "right" ? "left" : "right";
@@ -1858,23 +1867,25 @@ export   function setupSidebarEvents() {
     });
   }
 
-  // Keyboard shortcut listener for global toggle Sidebar / Cmd+Shift+P Palette
-  document.addEventListener("keydown", (e) => {
-    // Toggle Sidebar: Cmd+Shift+E
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
-      e.preventDefault();
-      toggleSidebarVisibility();
-    }
-
-    // Toggle Palette: Cmd+Shift+P
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
-      e.preventDefault();
-      ensureHUD();
-      openCommandPalette();
-    }
-  });
-
   // Highlight selected tool button in sidebar
+
+export function destroyHUD() {
+  deactivateCurrentTool();
+  if (state.hostEl) {
+    state.hostEl.remove();
+    state.hostEl = null;
+    state.shadowRoot = null;
+    state.sidebarEl = null;
+    state.drawerEl = null;
+    state.toastEl = null;
+    state.reopenTabEl = null;
+    state.highlightOverlay = null;
+    state.highlightLabel = null;
+    state.inspectorTooltip = null;
+    state.rulerCanvas = null;
+    state.sidebarVisible = false;
+  }
+}
 
 export   function updateSidebarActiveBtn() {
     if (!state.sidebarEl) return;

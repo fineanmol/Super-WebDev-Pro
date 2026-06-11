@@ -2561,6 +2561,14 @@ ${lines.join("\n")}
           initAccountPane(p);
           return;
         }
+        if (tabLabel === "Appearance") {
+          const deactBtn = p.querySelector("#settings-deactivate-btn");
+          if (deactBtn) {
+            deactBtn.onclick = () => {
+              Promise.resolve().then(() => (init_hud(), hud_exports)).then((m) => m.destroyHUD());
+            };
+          }
+        }
         const elements = p.querySelectorAll("[data-setting]");
         if (elements.length === 0) return;
         const keys = Array.from(elements).map((el) => el.getAttribute("data-setting"));
@@ -2807,6 +2815,14 @@ ${lines.join("\n")}
                 <option value="right">Right (Default)</option>
                 <option value="left">Left</option>
               </select>
+            </div>
+            
+            <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.08);">
+              <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:#ef4444;">Deactivate Extension</div>
+              <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Completely unload WebDev Pro from this webpage. Press Cmd+Shift+E or click the extension icon to restart it.</div>
+              <button id="settings-deactivate-btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; border-radius:6px; padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer; transition:background 0.2s;">
+                Turn Off WebDev Pro
+              </button>
             </div>
           </div>
         `,
@@ -3520,6 +3536,7 @@ ${lines.join("\n")}
   var hud_exports = {};
   __export(hud_exports, {
     applyDrawerPositionClass: () => applyDrawerPositionClass,
+    destroyHUD: () => destroyHUD,
     ensureHUD: () => ensureHUD,
     loadPersistentSettings: () => loadPersistentSettings,
     setSidebarPosition: () => setSidebarPosition,
@@ -5158,6 +5175,10 @@ ${lines.join("\n")}
         </svg>
         <div class="sidebar-tip">Settings</div>
       </button>
+      <button class="sidebar-btn" id="sbtn-power" title="Turn Off WebDev Pro" style="color: var(--accent-rose);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+        <div class="sidebar-tip">Turn Off WebDev Pro</div>
+      </button>
       <button class="sidebar-btn" id="sbtn-collapse" title="Hide Sidebar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         <div class="sidebar-tip">Hide Sidebar (Cmd+Shift+E)</div>
@@ -5262,6 +5283,9 @@ ${lines.join("\n")}
     state.shadowRoot.getElementById("sbtn-collapse").addEventListener("click", () => {
       setSidebarVisible(false);
     });
+    state.shadowRoot.getElementById("sbtn-power").addEventListener("click", () => {
+      destroyHUD();
+    });
     state.shadowRoot.getElementById("sbtn-settings-position").addEventListener("click", () => {
       const targetPos = state.sidebarPosition === "right" ? "left" : "right";
       setSidebarPosition(targetPos);
@@ -5321,6 +5345,23 @@ ${lines.join("\n")}
       });
     });
   }
+  function destroyHUD() {
+    deactivateCurrentTool();
+    if (state.hostEl) {
+      state.hostEl.remove();
+      state.hostEl = null;
+      state.shadowRoot = null;
+      state.sidebarEl = null;
+      state.drawerEl = null;
+      state.toastEl = null;
+      state.reopenTabEl = null;
+      state.highlightOverlay = null;
+      state.highlightLabel = null;
+      state.inspectorTooltip = null;
+      state.rulerCanvas = null;
+      state.sidebarVisible = false;
+    }
+  }
   function updateSidebarActiveBtn() {
     if (!state.sidebarEl) return;
     state.sidebarEl.querySelectorAll(".sidebar-btn").forEach((btn) => {
@@ -5338,17 +5379,6 @@ ${lines.join("\n")}
       init_drawer();
       init_dashboard();
       init_toast();
-      document.addEventListener("keydown", (e) => {
-        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
-          e.preventDefault();
-          toggleSidebarVisibility();
-        }
-        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
-          e.preventDefault();
-          ensureHUD();
-          openCommandPalette();
-        }
-      });
     }
   });
 
@@ -5357,6 +5387,17 @@ ${lines.join("\n")}
   init_hud();
   init_tool_manager();
   ensureHUD();
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      toggleSidebarVisibility();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+      e.preventDefault();
+      ensureHUD();
+      openCommandPalette();
+    }
+  });
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "toggle-sidebar" || req.action === "toggleSidebarShortcut") {
       toggleSidebarVisibility();

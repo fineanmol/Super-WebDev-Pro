@@ -1,9 +1,25 @@
 import { state } from './state.js';
 import { ensureHUD, toggleSidebarVisibility, setSidebarVisible } from './ui/hud.js';
-import { activateTool, deactivateCurrentTool } from './core/tool-manager.js';
+import { activateTool, deactivateCurrentTool, openCommandPalette } from './core/tool-manager.js';
 
 // Entry point initialization
 ensureHUD();
+
+// Keyboard shortcut listener for global toggle Sidebar / Cmd+Shift+P Palette
+document.addEventListener("keydown", (e) => {
+  // Toggle Sidebar: Cmd+Shift+E
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+    e.preventDefault();
+    toggleSidebarVisibility();
+  }
+
+  // Toggle Palette: Cmd+Shift+P
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+    e.preventDefault();
+    ensureHUD();
+    openCommandPalette();
+  }
+});
 
 chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   if (req.action === "toggle-sidebar" || req.action === "toggleSidebarShortcut") {
