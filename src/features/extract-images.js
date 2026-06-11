@@ -129,7 +129,7 @@ export   function setupExtractImages() {
         };
       });
       slot.querySelectorAll(".extract-img-open-btn").forEach(btn => {
-        btn.onclick = () => window.open(btn.getAttribute("data-url"), "_blank");
+        btn.onclick = () => window.open(btn.getAttribute("data-url"), "_blank", "noopener,noreferrer");
       });
       slot.querySelectorAll(".extract-img-dl-btn").forEach((btn, idx) => {
         btn.onclick = () => {

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Super WebDev Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #0b0f19;
+      color: #f8fafc;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 60px auto;
+      padding: 40px;
+      background: rgba(23, 32, 51, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+    }
+
+    header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 16px;
+      color: #6366f1;
+      border-left: 3px solid #a855f7;
+      padding-left: 12px;
+    }
+
+    p {
+      color: #94a3b8;
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    ul {
+      color: #94a3b8;
+      font-size: 15px;
+      margin-bottom: 24px;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    code {
+      font-family: monospace;
+      background-color: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #f8fafc;
+      font-size: 13px;
+    }
+
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 24px;
+      margin-top: 48px;
+      font-size: 13px;
+      color: #64748b;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">⚡ Super WebDev Pro</div>
+      <h1>Privacy Policy</h1>
+      <p style="margin-top: 6px;">Last Updated: June 10, 2026</p>
+    </header>
+
+    <main>
+      <p>This Privacy Policy explains how <strong>Super WebDev Pro</strong> ("we", "our", or "the extension") handles user information and data. We are committed to protecting user privacy and ensuring a transparent development tool experience.</p>
+
+      <h2>1. Information Collection & Transmission</h2>
+      <p>Super WebDev Pro is built to run entirely locally in your web browser. We prioritize your privacy above all else.</p>
+      <ul>
+        <li><strong>No Personal Data Collection:</strong> We do not collect, store, or transmit any personally identifiable information (PII).</li>
+        <li><strong>No External Data Transmission:</strong> Any actions performed within the extension—including inspecting CSS, editing text, capturing screenshots, harvesting page images, or measuring dimensions—happen completely in your local browser sandbox. No page data, styles, codes, or screenshots are ever transmitted to our servers or any third-party entities.</li>
+        <li><strong>Local Data Only:</strong> The extension utilizes standard local Chrome APIs to perform operations.</li>
+      </ul>
+
+      <h2>2. Chrome Extension Permissions Justification</h2>
+      <p>To perform its core developer utility functions, the extension requests the following permissions. Here is why they are needed:</p>
+      <ul>
+        <li><code>activeTab</code>: Required to inspect webpage components, modify font settings, measure dimensions, and capture the visible area viewport for the "Take Screenshot" tool.</li>
+        <li><code>scripting</code>: Required to inject the local helper coordinator onto the active tab when a tool is activated, ensuring we can highlight elements and listen to user gestures (like drags or clicks) inside the page.</li>
+        <li><code>storage</code>: Used to persist local states and configurations (such as your Free vs Pro version unlock status) locally on your device.</li>
+        <li><code>downloads</code>: Used to allow you to save exported HTML/CSS files, cropped screenshots, or extracted page images directly onto your local device's Downloads directory.</li>
+        <li><code>host_permissions</code> (<code>*://*/*</code>): Allows the extension scripts to run across custom domains where you actively open the extension tools.</li>
+      </ul>
+
+      <h2>3. Third-Party Webpages</h2>
+      <p>The extension allows users to export element codes to third-party services like <strong>CodePen</strong> (<code>codepen.io</code>). Clicking "Export to CodePen" will redirect you to CodePen's webpage and submit the element code via a standard HTTP POST request. This action is entirely opt-in, and you are subject to CodePen's terms of service and privacy policy when using their website.</p>
+
+      <h2>4. Updates to this Policy</h2>
+      <p>We may update this Privacy Policy from time to time to comply with Chrome Web Store Developer Policies or browser platform changes. We encourage users to check this document regularly.</p>
+
+      <h2>5. Contact Support</h2>
+      <p>If you have any questions or feedback regarding this Privacy Policy, please open an issue in our GitHub repository or contact our support team.</p>
+    </main>
+
+    <footer>
+      Super WebDev Pro Extension &copy; 2026. All rights reserved.
+    </footer>
+  </div>
+</body>
+
+</html>
