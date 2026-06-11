@@ -1,6 +1,12 @@
 import { state } from '../state.js';
-import { openDrawer } from '../ui/drawer.js';
-export function setupFontsChanger() {
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
+import { ensureHUD } from '../ui/hud.js';
+import { showToast } from '../ui/toast.js';
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
+export   function setupFontsChanger() {
     const fonts = [
       { name: "Roboto", sample: "Roboto Typography" },
       { name: "Inter", sample: "Inter Developer" },
@@ -56,4 +62,6 @@ export function setupFontsChanger() {
       });
     });
   }
+
+  // 4. List Fonts
 

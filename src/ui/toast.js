@@ -1,5 +1,6 @@
 import { state } from '../state.js';
-export function showToast(msg) {
+
+export   function showToast(msg) {
     ensureHUD();
     const txt = state.shadowRoot.getElementById("toast-text-slot");
     txt.textContent = msg;
@@ -8,4 +9,6 @@ export function showToast(msg) {
       state.toastEl.classList.remove("visible");
     }, 2500);
   }
+
+  // Drawer Panel
 

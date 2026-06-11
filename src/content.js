@@ -2,9 +2,6 @@ import { state } from './state.js';
 import { ensureHUD } from './ui/hud.js';
 import { activateTool, deactivateCurrentTool } from './core/tool-manager.js';
 
-
-
-
 // Entry point initialization
 ensureHUD();
 

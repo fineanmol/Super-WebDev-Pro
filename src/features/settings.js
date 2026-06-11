@@ -1,6 +1,11 @@
 import { state } from '../state.js';
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
 import { ensureHUD } from '../ui/hud.js';
-import { deactivateCurrentTool } from '../core/tool-manager.js';
+import { showToast } from '../ui/toast.js';
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
 export function setupSettings() {
     let modal = state.shadowRoot.getElementById("settings-modal-overlay");
     if (!modal) {
@@ -353,4 +358,3 @@ export function setupSettings() {
       modal.style.display = "flex";
     }
   }
-

@@ -1,7 +1,9 @@
 import { state } from '../state.js';
-import { activateTool } from '../core/tool-manager.js';
-import { closeDrawer } from './drawer.js';
-export function ensureHUD() {
+import { activateTool, deactivateCurrentTool, openCommandPalette } from '../core/tool-manager.js';
+import { openDrawer, closeDrawer } from './drawer.js';
+import { showToast } from './toast.js';
+
+export   function ensureHUD() {
     if (state.hostEl) return;
 
     state.hostEl = document.createElement("div");
@@ -1700,4 +1702,182 @@ export function ensureHUD() {
     setupSidebarEvents();
     loadPersistentSettings();
   }
+
+  // Persistent Settings
+
+export   function loadPersistentSettings() {
+    chrome.storage.local.get(["sidebarPosition", "premium"], (res) => {
+      state.isPremium = res.premium !== false; // Default Pro
+      if (res.sidebarPosition === "left") {
+        setSidebarPosition("left");
+      } else {
+        setSidebarPosition("right");
+      }
+    });
+  }
+
+
+export   function applyDrawerPositionClass(pos) {
+    if (!state.drawerEl) return;
+    if (pos === "left") {
+      state.drawerEl.classList.add("drawer-panel-left");
+      state.drawerEl.classList.remove("drawer-panel-right");
+    } else {
+      state.drawerEl.classList.add("drawer-panel-right");
+      state.drawerEl.classList.remove("drawer-panel-left");
+    }
+  }
+
+
+export   function setSidebarPosition(pos) {
+    state.sidebarPosition = pos;
+    chrome.storage.local.set({ sidebarPosition: pos });
+
+    // Update sidebar classes
+    if (pos === "left") {
+      state.sidebarEl.classList.add("sidebar-left");
+      state.sidebarEl.classList.remove("sidebar-right");
+      state.reopenTabEl.className = "reopen-tab reopen-tab-left";
+      state.reopenTabEl.innerHTML = `<span>▶</span>`;
+    } else {
+      state.sidebarEl.classList.add("sidebar-right");
+      state.sidebarEl.classList.remove("sidebar-left");
+      state.reopenTabEl.className = "reopen-tab reopen-tab-right";
+      state.reopenTabEl.innerHTML = `<span>◀</span>`;
+    }
+
+    // Apply drawer position class (drawer is sibling of sidebar, not child)
+    applyDrawerPositionClass(pos);
+    
+    // Close active drawers on swap to reset coordinates smoothly
+    closeDrawer();
+  }
+
+
+export   function toggleSidebarVisibility() {
+    ensureHUD();
+    setSidebarVisible(!state.sidebarVisible);
+  }
+
+
+export   function setSidebarVisible(visible) {
+    state.sidebarVisible = visible;
+    if (visible) {
+      state.sidebarEl.classList.remove("sidebar-hidden");
+      state.reopenTabEl.style.display = "none";
+    } else {
+      state.sidebarEl.classList.add("sidebar-hidden");
+      state.reopenTabEl.style.display = "flex";
+      closeDrawer();
+    }
+  }
+
+  // Wire up sidebar UI click events
+
+export   function setupSidebarEvents() {
+    // Reopen Tab
+    state.reopenTabEl.addEventListener("click", () => {
+      setSidebarVisible(true);
+    });
+
+    // Collapse
+    state.shadowRoot.getElementById("sbtn-collapse").addEventListener("click", () => {
+      setSidebarVisible(false);
+    });
+
+    // Position Toggle
+    state.shadowRoot.getElementById("sbtn-settings-position").addEventListener("click", () => {
+      const targetPos = state.sidebarPosition === "right" ? "left" : "right";
+      setSidebarPosition(targetPos);
+      showToast(`Docked position: ${targetPos.toUpperCase()}`);
+    });
+
+    // Drawer close
+    state.shadowRoot.getElementById("drawer-close-btn").addEventListener("click", () => {
+      closeDrawer();
+    });
+
+    // Dashboard Branding Button
+    state.shadowRoot.getElementById("sbtn-dashboard").addEventListener("click", () => {
+      openDashboardDrawer();
+    });
+
+    // Command Palette Trigger
+    state.shadowRoot.getElementById("sbtn-cmd-palette").addEventListener("click", () => {
+      openCommandPalette();
+    });
+
+    // Tools Buttons binding
+    const tools = [
+      { id: "css-inspector", btnId: "sbtn-css-inspector" },
+      { id: "live-text-editor", btnId: "sbtn-live-text-editor" },
+      { id: "fonts-changer", btnId: "sbtn-fonts-changer" },
+      { id: "list-fonts", btnId: "sbtn-list-fonts" },
+      { id: "color-picker", btnId: "sbtn-color-picker" },
+      { id: "color-palette", btnId: "sbtn-color-palette" },
+      { id: "move-element", btnId: "sbtn-move-element" },
+      { id: "delete-element", btnId: "sbtn-delete-element" },
+      { id: "export-element", btnId: "sbtn-export-element" },
+      { id: "extract-images", btnId: "sbtn-extract-images" },
+      { id: "page-ruler", btnId: "sbtn-page-ruler" },
+      { id: "page-outliner", btnId: "sbtn-page-outliner" },
+      { id: "image-replacer", btnId: "sbtn-image-replacer" },
+      { id: "take-screenshot", btnId: "sbtn-take-screenshot" },
+      { id: "responsive-viewer", btnId: "sbtn-responsive-viewer" },
+      // New diagnostic tabs
+      { id: "tech-stack", btnId: "sbtn-tech-stack" },
+      { id: "seo-meta", btnId: "sbtn-seo-meta" },
+      { id: "a11y-audit", btnId: "sbtn-a11y-audit" },
+      { id: "settings", btnId: "sbtn-settings-drawer" }
+    ];
+
+    tools.forEach(tool => {
+      state.shadowRoot.getElementById(tool.btnId).addEventListener("click", () => {
+        // Handle premium lock
+        const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
+        if (premiumTools.includes(tool.id) && !state.isPremium) {
+          showPremiumLockedDrawer(tool.id);
+          return;
+        }
+
+        if (state.activeTool === tool.id) {
+          deactivateCurrentTool();
+        } else {
+          activateTool(tool.id);
+        }
+      });
+    });
+  }
+
+  // Keyboard shortcut listener for global toggle Sidebar / Cmd+Shift+P Palette
+  document.addEventListener("keydown", (e) => {
+    // Toggle Sidebar: Cmd+Shift+E
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      toggleSidebarVisibility();
+    }
+
+    // Toggle Palette: Cmd+Shift+P
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+      e.preventDefault();
+      ensureHUD();
+      openCommandPalette();
+    }
+  });
+
+  // Highlight selected tool button in sidebar
+
+export   function updateSidebarActiveBtn() {
+    if (!state.sidebarEl) return;
+    state.sidebarEl.querySelectorAll(".sidebar-btn").forEach(btn => {
+      btn.classList.remove("active-tool");
+    });
+
+    if (state.activeTool) {
+      const activeBtn = state.shadowRoot.getElementById(`sbtn-${state.activeTool}`);
+      if (activeBtn) activeBtn.classList.add("active-tool");
+    }
+  }
+
+  // Toast
 

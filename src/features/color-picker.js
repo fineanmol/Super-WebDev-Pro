@@ -1,9 +1,13 @@
 import { state } from '../state.js';
-import { openDrawer } from '../ui/drawer.js';
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
+import { ensureHUD } from '../ui/hud.js';
 import { showToast } from '../ui/toast.js';
-import { deactivateCurrentTool } from '../core/tool-manager.js';
-export function setupColorPicker() {
-function drawColorPickerDrawer(pickedHex = null) {
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
+export   function setupColorPicker() {
+    function drawColorPickerDrawer(pickedHex = null) {
       let resultHTML = "";
       if (pickedHex) {
         const rgb = hexToRgb(pickedHex);
@@ -67,4 +71,6 @@ function drawColorPickerDrawer(pickedHex = null) {
 
     drawColorPickerDrawer();
   }
+
+  // 7. Move Element
 

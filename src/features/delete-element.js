@@ -1,7 +1,13 @@
 import { state } from '../state.js';
-import { openDrawer } from '../ui/drawer.js';
-export function setupDeleteElement() {
-function drawDeleteDrawer() {
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
+import { ensureHUD } from '../ui/hud.js';
+import { showToast } from '../ui/toast.js';
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
+export   function setupDeleteElement() {
+    function drawDeleteDrawer() {
       const logsHTML = state.undoStacks.deletedElements.map((del, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${del.element.tagName.toLowerCase()}&gt; hidden</span>
@@ -71,4 +77,6 @@ function drawDeleteDrawer() {
       drawDeleteDrawer();
     }, true);
   }
+
+  // 9. Export Element
 

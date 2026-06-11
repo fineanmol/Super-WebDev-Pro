@@ -1,7 +1,12 @@
 import { state } from '../state.js';
-import { openDrawer, closeDrawer } from '../ui/drawer.js';
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
+import { ensureHUD } from '../ui/hud.js';
 import { showToast } from '../ui/toast.js';
-export function setupExtractImages() {
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
+export   function setupExtractImages() {
     const imagesMap = new Map();
 
     const addImage = (src, type, alt = "") => {
@@ -263,4 +268,6 @@ export function setupExtractImages() {
       };
     });
   }
+
+  // 11. Page Ruler
 

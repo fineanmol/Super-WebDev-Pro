@@ -1,6 +1,12 @@
 import { state } from '../state.js';
-import { openDrawer } from '../ui/drawer.js';
-export function setupPageRuler() {
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
+import { ensureHUD } from '../ui/hud.js';
+import { showToast } from '../ui/toast.js';
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
+export   function setupPageRuler() {
     const guideHTML = `
       <div class="audit-card">
         <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
@@ -113,4 +119,7 @@ export function setupPageRuler() {
       useCapture: false
     });
   }
+  // ==========================================
+  // RESPONSIVE VIEWER
+  // ==========================================
 

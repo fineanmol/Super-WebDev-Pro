@@ -1,8 +1,15 @@
 import { state } from '../state.js';
-import { openDrawer } from '../ui/drawer.js';
-export function setupLiveTextEditor() {
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
+import { ensureHUD } from '../ui/hud.js';
+import { showToast } from '../ui/toast.js';
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
+export   function setupLiveTextEditor() {
     document.body.contentEditable = "true";
-function drawTextEditorDrawer() {
+
+    function drawTextEditorDrawer() {
       const logsHTML = state.undoStacks.textEdits.map((edit, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${edit.element.tagName.toLowerCase()}&gt; modified</span>
@@ -76,4 +83,6 @@ function drawTextEditorDrawer() {
       delete e.target.dataset.oldText;
     });
   }
+
+  // 5. Color Picker
 

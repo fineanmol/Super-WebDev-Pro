@@ -1,7 +1,13 @@
 import { state } from '../state.js';
-import { openDrawer } from '../ui/drawer.js';
-export function setupMoveElement() {
-function drawMoveDrawer() {
+import { openDrawer, closeDrawer, showPremiumLockedDrawer } from '../ui/drawer.js';
+import { ensureHUD } from '../ui/hud.js';
+import { showToast } from '../ui/toast.js';
+import { showHighlight, hideHighlight, updateInspectorTooltip, isHUDElement } from '../ui/highlight.js';
+import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
+import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
+
+export   function setupMoveElement() {
+    function drawMoveDrawer() {
       const logsHTML = state.undoStacks.movedElements.map((move, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${move.element.tagName.toLowerCase()}&gt; translated</span>
@@ -168,4 +174,6 @@ function drawMoveDrawer() {
       }
     }, true);
   }
+
+  // 8. Delete Element
 

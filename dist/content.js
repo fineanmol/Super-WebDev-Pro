@@ -1,6 +1,6 @@
 (() => {
   // src/state.js
-  var state = {
+  var state2 = {
     isSidebarOpen: false,
     activeTool: null,
     // "css-inspector", "live-text-editor", etc.
@@ -25,72 +25,269 @@
   };
 
   // src/ui/highlight.js
-  function showHighlight2(rect, labelText, customColor = null) {
+  function showHighlight(rect, labelText, customColor = null) {
     ensureHUD();
-    state.highlightOverlay.style.top = `${rect.top}px`;
-    state.highlightOverlay.style.left = `${rect.left}px`;
-    state.highlightOverlay.style.width = `${rect.width}px`;
-    state.highlightOverlay.style.height = `${rect.height}px`;
-    state.highlightOverlay.style.display = "block";
+    state2.highlightOverlay.style.top = `${rect.top}px`;
+    state2.highlightOverlay.style.left = `${rect.left}px`;
+    state2.highlightOverlay.style.width = `${rect.width}px`;
+    state2.highlightOverlay.style.height = `${rect.height}px`;
+    state2.highlightOverlay.style.display = "block";
     if (customColor) {
-      state.highlightOverlay.style.borderColor = customColor;
-      state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
-      state.highlightLabel.style.backgroundColor = customColor;
+      state2.highlightOverlay.style.borderColor = customColor;
+      state2.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+      state2.highlightLabel.style.backgroundColor = customColor;
     } else {
-      const defaultBorder = state.activeTool === "css-inspector" ? "#4ade80" : "var(--accent-purple)";
-      const defaultBg = state.activeTool === "css-inspector" ? "rgba(74, 222, 128, 0.05)" : "rgba(184, 163, 252, 0.08)";
-      state.highlightOverlay.style.borderColor = defaultBorder;
-      state.highlightOverlay.style.backgroundColor = defaultBg;
-      state.highlightLabel.style.backgroundColor = "var(--accent-purple)";
+      const defaultBorder = state2.activeTool === "css-inspector" ? "#4ade80" : "var(--accent-purple)";
+      const defaultBg = state2.activeTool === "css-inspector" ? "rgba(74, 222, 128, 0.05)" : "rgba(184, 163, 252, 0.08)";
+      state2.highlightOverlay.style.borderColor = defaultBorder;
+      state2.highlightOverlay.style.backgroundColor = defaultBg;
+      state2.highlightLabel.style.backgroundColor = "var(--accent-purple)";
     }
-    if (state.activeTool === "css-inspector") {
-      state.highlightOverlay.classList.add("show-guides");
-      state.highlightLabel.style.display = "none";
+    if (state2.activeTool === "css-inspector") {
+      state2.highlightOverlay.classList.add("show-guides");
+      state2.highlightLabel.style.display = "none";
     } else {
-      state.highlightOverlay.classList.remove("show-guides");
-      state.highlightLabel.textContent = labelText;
-      state.highlightLabel.style.top = `${Math.max(rect.top - 20, 2)}px`;
-      state.highlightLabel.style.left = `${rect.left}px`;
-      state.highlightLabel.style.display = "block";
+      state2.highlightOverlay.classList.remove("show-guides");
+      state2.highlightLabel.textContent = labelText;
+      state2.highlightLabel.style.top = `${Math.max(rect.top - 20, 2)}px`;
+      state2.highlightLabel.style.left = `${rect.left}px`;
+      state2.highlightLabel.style.display = "block";
     }
   }
-  function hideHighlight2() {
-    if (state.highlightOverlay) {
-      state.highlightOverlay.style.display = "none";
-      state.highlightOverlay.classList.remove("show-guides");
-      state.highlightLabel.style.display = "none";
+  function isHUDElement(el) {
+    if (!el) return false;
+    if (el === state2.hostEl || state2.hostEl.contains(el)) return true;
+    return false;
+  }
+  function hideHighlight() {
+    if (state2.highlightOverlay) {
+      state2.highlightOverlay.style.display = "none";
+      state2.highlightOverlay.classList.remove("show-guides");
+      state2.highlightLabel.style.display = "none";
     }
-    if (state.inspectorTooltip) {
-      state.inspectorTooltip.style.display = "none";
+    if (state2.inspectorTooltip) {
+      state2.inspectorTooltip.style.display = "none";
     }
+  }
+  function updateInspectorTooltip(element, clientX, clientY) {
+    if (!state2.inspectorTooltip) return;
+    const computed = window.getComputedStyle(element);
+    const parentSel = element.parentElement ? formatElementSelector(element.parentElement) : "";
+    const activeSel = formatElementSelector(element);
+    const childSel = element.firstElementChild ? formatElementSelector(element.firstElementChild) : "";
+    let hierarchyHTML = "";
+    if (parentSel) {
+      hierarchyHTML += `<div style="margin-bottom: 2px;">${parentSel}</div>`;
+      hierarchyHTML += `<div class="tooltip-hierarchy-active">\u2514 ${activeSel}</div>`;
+    } else {
+      hierarchyHTML += `<div class="tooltip-hierarchy-active">${activeSel}</div>`;
+    }
+    if (childSel) {
+      hierarchyHTML += `<div style="margin-top: 2px; color: rgba(255,255,255,0.3);">\u2514 ${childSel}</div>`;
+    }
+    const tagName = element.tagName.toLowerCase();
+    const rect = element.getBoundingClientRect();
+    const width = Math.round(rect.width);
+    const height = Math.round(rect.height);
+    const dimsHTML = `
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:middle; margin-right:5px; opacity:0.75;">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" opacity="0.3" />
+      </svg>
+      <span>${width} \xD7 ${height}</span>
+    `;
+    const firstFont = getFirstFontFamily(computed.fontFamily);
+    const fontSize = computed.fontSize;
+    const fontWeight = computed.fontWeight;
+    const fontHTML = `
+      <span style="font-family: serif; font-weight: 800; font-size: 11px; margin-right: 6px; color: rgba(255, 255, 255, 0.45); display: inline-block;">A</span>
+      <span>${firstFont} ${fontSize} \xB7 ${fontWeight}</span>
+    `;
+    const propsToShow = [];
+    const isZeroOrNone = (val) => !val || val === "0px" || val === "none" || val === "0px 0px" || val === "0px 0px 0px 0px" || val === "normal";
+    propsToShow.push({ name: "color", value: computed.color });
+    const bgCol = computed.backgroundColor;
+    if (bgCol && bgCol !== "rgba(0, 0, 0, 0)" && bgCol !== "transparent") {
+      propsToShow.push({ name: "background-color", value: bgCol });
+    }
+    const disp = computed.display;
+    if (disp && disp !== "block" && disp !== "inline") {
+      propsToShow.push({ name: "display", value: disp });
+      if (disp.includes("flex") || disp.includes("grid")) {
+        const fd = computed.flexDirection;
+        if (fd && fd !== "row") propsToShow.push({ name: "flex-direction", value: fd });
+        const ai = computed.alignItems;
+        if (ai && ai !== "normal" && ai !== "stretch") propsToShow.push({ name: "align-items", value: ai });
+        const jc = computed.justifyContent;
+        if (jc && jc !== "normal" && jc !== "start" && jc !== "flex-start") propsToShow.push({ name: "justify-content", value: jc });
+        const gap = computed.gap;
+        if (gap && !isZeroOrNone(gap)) propsToShow.push({ name: "gap", value: gap });
+      }
+    }
+    const pos = computed.position;
+    if (pos && pos !== "static") {
+      propsToShow.push({ name: "position", value: pos });
+      const zIndex = computed.zIndex;
+      if (zIndex && zIndex !== "auto") propsToShow.push({ name: "z-index", value: zIndex });
+    }
+    const margin = computed.margin;
+    if (margin && !isZeroOrNone(margin)) propsToShow.push({ name: "margin", value: margin });
+    const padding = computed.padding;
+    if (padding && !isZeroOrNone(padding)) propsToShow.push({ name: "padding", value: padding });
+    const borderStyle = computed.borderStyle;
+    const borderWidth = computed.borderWidth;
+    const borderColor = computed.borderColor;
+    if (borderStyle && borderStyle !== "none" && borderWidth && borderWidth !== "0px") {
+      propsToShow.push({ name: "border", value: `${borderWidth} ${borderStyle} ${borderColor}` });
+    }
+    const borderRadius = computed.borderRadius;
+    if (borderRadius && !isZeroOrNone(borderRadius)) propsToShow.push({ name: "border-radius", value: borderRadius });
+    const ff = computed.fontFamily;
+    if (ff) {
+      const ffTrunc = ff.length > 25 ? ff.substring(0, 25) + "..." : ff;
+      propsToShow.push({ name: "font-family", value: ffTrunc });
+    }
+    const lh = computed.lineHeight;
+    if (lh && lh !== "normal") propsToShow.push({ name: "line-height", value: lh });
+    const bs = computed.boxSizing;
+    if (bs) propsToShow.push({ name: "box-sizing", value: bs });
+    const wfs = computed.webkitFontSmoothing || computed.getPropertyValue("-webkit-font-smoothing");
+    if (wfs && wfs !== "auto") propsToShow.push({ name: "-webkit-font-smoothing", value: wfs });
+    propsToShow.sort((a, b) => a.name.localeCompare(b.name));
+    let cssHTML = "";
+    propsToShow.forEach((prop) => {
+      const colorVal = extractColor(prop.name, prop.value);
+      let swatch = "";
+      if (colorVal) {
+        swatch = `<span class="css-p-swatch" style="background-color: ${colorVal};"></span>`;
+      }
+      cssHTML += `
+        <div class="css-p-row">
+          <span class="css-p-name">${prop.name}</span>: <span class="css-p-value">${swatch}${prop.value}</span>;
+        </div>
+      `;
+    });
+    state2.inspectorTooltip.innerHTML = `
+      <div class="tooltip-hierarchy">${hierarchyHTML}</div>
+      <div class="tooltip-meta">
+        <div class="tooltip-tag">${tagName}</div>
+        <div class="tooltip-meta-row">${dimsHTML}</div>
+        <div class="tooltip-meta-row">${fontHTML}</div>
+      </div>
+      <div class="tooltip-css-block">${cssHTML}</div>
+      <div class="tooltip-footer">Click to lock \xB7 \u2191\u2193 navigate \xB7 Esc to exit</div>
+    `;
+    state2.inspectorTooltip.style.display = "block";
+    const tooltipWidth = 290;
+    const tooltipHeight = state2.inspectorTooltip.offsetHeight || 280;
+    const marginOffset = 15;
+    let x = clientX + marginOffset;
+    let y = clientY + marginOffset;
+    if (x + tooltipWidth > window.innerWidth) {
+      x = clientX - tooltipWidth - marginOffset;
+    }
+    if (y + tooltipHeight > window.innerHeight) {
+      y = clientY - tooltipHeight - marginOffset;
+    }
+    x = Math.max(5, x);
+    y = Math.max(5, y);
+    state2.inspectorTooltip.style.left = `${x}px`;
+    state2.inspectorTooltip.style.top = `${y}px`;
   }
 
   // src/ui/drawer.js
-  function openDrawer2(title, subtitle, contentHTML, onRender = null) {
+  function openDrawer(title, subtitle, contentHTML, onRender = null) {
     ensureHUD2();
-    state.shadowRoot.getElementById("drawer-title-slot").textContent = title;
-    state.shadowRoot.getElementById("drawer-sub-slot").textContent = subtitle;
-    const slot = state.shadowRoot.getElementById("drawer-content-slot");
+    state2.shadowRoot.getElementById("drawer-title-slot").textContent = title;
+    state2.shadowRoot.getElementById("drawer-sub-slot").textContent = subtitle;
+    const slot = state2.shadowRoot.getElementById("drawer-content-slot");
     slot.innerHTML = contentHTML;
-    state.drawerEl.classList.add("visible");
+    state2.drawerEl.classList.add("visible");
     if (onRender) onRender(slot);
   }
-  function closeDrawer2() {
-    if (state.drawerEl) {
-      state.drawerEl.classList.remove("visible");
+  function closeDrawer() {
+    if (state2.drawerEl) {
+      state2.drawerEl.classList.remove("visible");
     }
   }
 
   // src/ui/toast.js
-  function showToast2(msg) {
+  function showToast(msg) {
     ensureHUD();
-    const txt = state.shadowRoot.getElementById("toast-text-slot");
+    const txt = state2.shadowRoot.getElementById("toast-text-slot");
     txt.textContent = msg;
-    state.toastEl.classList.add("visible");
+    state2.toastEl.classList.add("visible");
     setTimeout(() => {
-      state.toastEl.classList.remove("visible");
+      state2.toastEl.classList.remove("visible");
     }, 2500);
   }
+
+  // src/utils.js
+  function hexToRgb(hex) {
+    let c = hex.replace(/^#/, "");
+    if (c.length === 3) c = c.split("").map((x) => x + x).join("");
+    const num = parseInt(c, 16);
+    return { r: num >> 16 & 255, g: num >> 8 & 255, b: num & 255 };
+  }
+  function rgbToHsl(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r:
+          h = (g - b) / d + (g < b ? 6 : 0);
+          break;
+        case g:
+          h = (b - r) / d + 2;
+          break;
+        case b:
+          h = (r - g) / d + 4;
+          break;
+      }
+      h /= 6;
+    }
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  }
+  function extractColor2(propName, value) {
+    if (!value) return null;
+    if (propName === "color" || propName === "background-color") {
+      return value;
+    }
+    const match = value.match(/(rgba?\(.*?\)|#[0-9a-fA-F]{3,8})/);
+    return match ? match[0] : null;
+  }
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "getActiveTool") {
+      sendResponse({ activeTool: state.activeTool });
+      return;
+    }
+    if (request.action === "toggleSidebarShortcut") {
+      toggleSidebarVisibility();
+      sendResponse({ status: "success" });
+      return;
+    }
+    if (request.action === "toggleTool") {
+      state.isPremium = !!request.premium;
+      ensureHUD();
+      if (!state.sidebarVisible) {
+        setSidebarVisible(true);
+      }
+      if (state.activeTool === request.tool) {
+        deactivateCurrentTool();
+        sendResponse({ status: "success", isActive: false });
+      } else {
+        activateTool(request.tool);
+        sendResponse({ status: "success", isActive: true });
+      }
+    }
+  });
 
   // src/features/css-inspector.js
   function setupCSSInspector() {
@@ -105,8 +302,8 @@
       </div>
       <div id="inspector-element-details" style="display: none; margin-top: 14px;"></div>
     `;
-    openDrawer2("CSS Inspector", "Computed values & Live CSS overrides", guideHTML);
-    const drawerHeader = state.drawerEl.querySelector(".drawer-header");
+    openDrawer("CSS Inspector", "Computed values & Live CSS overrides", guideHTML);
+    const drawerHeader = state2.drawerEl.querySelector(".drawer-header");
     drawerHeader.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -123,38 +320,38 @@
     trackListener(document, "mouseover", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) return;
       const rect = e.target.getBoundingClientRect();
-      showHighlight2(rect, "");
+      showHighlight(rect, "");
       updateInspectorTooltip(e.target, e.clientX, e.clientY);
     }, true);
     trackListener(document, "mousemove", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) {
-        if (state.inspectorTooltip) {
-          state.inspectorTooltip.style.display = "none";
+        if (state2.inspectorTooltip) {
+          state2.inspectorTooltip.style.display = "none";
         }
         return;
       }
       const rect = e.target.getBoundingClientRect();
-      showHighlight2(rect, "");
+      showHighlight(rect, "");
       updateInspectorTooltip(e.target, e.clientX, e.clientY);
     }, true);
     trackListener(document, "mouseout", (e) => {
       if (isHUDElement(e.target)) return;
-      if (state.selectedElementForCss) {
-        const rect = state.selectedElementForCss.getBoundingClientRect();
-        showHighlight2(rect, "");
+      if (state2.selectedElementForCss) {
+        const rect = state2.selectedElementForCss.getBoundingClientRect();
+        showHighlight(rect, "");
       } else {
-        hideHighlight2();
+        hideHighlight();
       }
-      if (state.inspectorTooltip) {
-        state.inspectorTooltip.style.display = "none";
+      if (state2.inspectorTooltip) {
+        state2.inspectorTooltip.style.display = "none";
       }
     }, true);
     trackListener(document, "click", (e) => {
       if (isHUDElement(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      state.selectedElementForCss = e.target;
-      const existingSlot = state.shadowRoot.getElementById("inspector-element-details");
+      state2.selectedElementForCss = e.target;
+      const existingSlot = state2.shadowRoot.getElementById("inspector-element-details");
       if (!existingSlot) {
         const guideHTML2 = `
           <div class="audit-card">
@@ -167,59 +364,491 @@
           </div>
           <div id="inspector-element-details" style="display: none; margin-top: 14px;"></div>
         `;
-        openDrawer2("CSS Inspector", "Computed values & Live CSS overrides", guideHTML2);
+        openDrawer("CSS Inspector", "Computed values & Live CSS overrides", guideHTML2);
       } else {
-        if (state.drawerEl && !state.drawerEl.classList.contains("visible")) {
-          state.drawerEl.classList.add("visible");
+        if (state2.drawerEl && !state2.drawerEl.classList.contains("visible")) {
+          state2.drawerEl.classList.add("visible");
         }
       }
       renderCSSDetailsInDrawer();
       const rect = e.target.getBoundingClientRect();
-      showHighlight2(rect, "");
+      showHighlight(rect, "");
     }, true);
     trackListener(document, "keydown", (e) => {
-      if (state.activeTool !== "css-inspector" || !state.selectedElementForCss) return;
-      let target = state.selectedElementForCss;
+      if (state2.activeTool !== "css-inspector" || !state2.selectedElementForCss) return;
+      let target = state2.selectedElementForCss;
       let nextEl = null;
       if (e.key === "ArrowUp") {
         nextEl = target.parentElement;
         if (nextEl && nextEl !== document.body && nextEl !== document.documentElement && !isHUDElement(nextEl)) {
           e.preventDefault();
-          state.selectedElementForCss = nextEl;
+          state2.selectedElementForCss = nextEl;
           renderCSSDetailsInDrawer();
           const rect = nextEl.getBoundingClientRect();
-          showHighlight2(rect, "");
-          if (state.inspectorTooltip) {
-            state.inspectorTooltip.style.display = "none";
+          showHighlight(rect, "");
+          if (state2.inspectorTooltip) {
+            state2.inspectorTooltip.style.display = "none";
           }
         }
       } else if (e.key === "ArrowDown") {
         nextEl = target.firstElementChild;
         if (nextEl && !isHUDElement(nextEl)) {
           e.preventDefault();
-          state.selectedElementForCss = nextEl;
+          state2.selectedElementForCss = nextEl;
           renderCSSDetailsInDrawer();
           const rect = nextEl.getBoundingClientRect();
-          showHighlight2(rect, "");
-          if (state.inspectorTooltip) {
-            state.inspectorTooltip.style.display = "none";
+          showHighlight(rect, "");
+          if (state2.inspectorTooltip) {
+            state2.inspectorTooltip.style.display = "none";
           }
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
-        state.selectedElementForCss = null;
-        hideHighlight2();
-        const detailsSlot = state.shadowRoot.getElementById("inspector-element-details");
+        state2.selectedElementForCss = null;
+        hideHighlight();
+        const detailsSlot = state2.shadowRoot.getElementById("inspector-element-details");
         if (detailsSlot) detailsSlot.style.display = "none";
       }
     });
+  }
+  var PROPERTIES_BY_TAB = {
+    all: ["display", "position", "top", "right", "bottom", "left", "width", "height", "margin", "padding", "color", "background-color", "border", "border-radius", "font-family", "font-size", "line-height", "font-weight", "text-align", "box-shadow", "opacity", "cursor", "z-index"],
+    "web-layout": ["display", "position", "top", "right", "bottom", "left", "width", "height", "margin", "padding", "box-sizing", "overflow", "z-index"],
+    typography: ["font-family", "font-size", "line-height", "font-weight", "text-align", "color", "letter-spacing", "text-transform", "white-space", "word-break"],
+    color: ["color", "border-color", "outline-color", "text-decoration-color"],
+    effects: ["box-shadow", "opacity", "mix-blend-mode", "filter", "backdrop-filter", "transform", "transition"],
+    background: ["background-color", "background-image", "background-size", "background-position", "background-repeat"],
+    grid: ["grid-template-columns", "grid-template-rows", "grid-gap", "align-items", "justify-content", "flex-direction", "flex-wrap"]
+  };
+  function parseValAndUnit(valStr) {
+    if (!valStr) return { value: 0, unit: "px" };
+    const match = String(valStr).trim().match(/^([\d.]+)([a-zA-Z%]*)$/);
+    if (match) {
+      return { value: parseFloat(match[1]), unit: match[2] || "px" };
+    }
+    const valOnly = parseFloat(valStr);
+    return { value: isNaN(valOnly) ? 0 : valOnly, unit: "px" };
+  }
+  function renderCSSDetailsInDrawer() {
+    const el = state2.selectedElementForCss;
+    if (!el || !state2.drawerEl) return;
+    let detailsSlot = state2.shadowRoot.getElementById("inspector-element-details");
+    if (!detailsSlot) {
+      const guideHTML = `
+        <div class="audit-card">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>\u{1F50D}</span> Element Selector Active
+          </div>
+          <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0;">
+            Click to lock an element and edit styles in this drawer.
+          </p>
+        </div>
+        <div id="inspector-element-details" style="display: none; margin-top: 14px;"></div>
+      `;
+      openDrawer("CSS Inspector", "Computed values & Live CSS overrides", guideHTML);
+      detailsSlot = state2.shadowRoot.getElementById("inspector-element-details");
+      if (!detailsSlot) return;
+    }
+    if (state2.drawerEl && !state2.drawerEl.classList.contains("visible")) {
+      state2.drawerEl.classList.add("visible");
+    }
+    detailsSlot.style.display = "block";
+    state2.activeInspectorTab = state2.activeInspectorTab || "all";
+    if (!state2.disabledStyles) state2.disabledStyles = /* @__PURE__ */ new WeakMap();
+    if (!state2.disabledStyleValues) state2.disabledStyleValues = /* @__PURE__ */ new WeakMap();
+    if (!state2.originalStyles) state2.originalStyles = /* @__PURE__ */ new WeakMap();
+    if (!state2.originalStyles.has(el)) {
+      state2.originalStyles.set(el, el.getAttribute("style") || "");
+    }
+    let disabledSet = state2.disabledStyles.get(el);
+    if (!disabledSet) {
+      disabledSet = /* @__PURE__ */ new Set();
+      state2.disabledStyles.set(el, disabledSet);
+    }
+    let valuesMap = state2.disabledStyleValues.get(el);
+    if (!valuesMap) {
+      valuesMap = {};
+      state2.disabledStyleValues.set(el, valuesMap);
+    }
+    const computed = window.getComputedStyle(el);
+    const tagName = el.tagName.toLowerCase();
+    const idAttr = el.id ? `#${el.id}` : "";
+    let classesAttr = "";
+    if (el.classList && el.classList.length > 0) {
+      const cls = Array.from(el.classList).filter((c) => typeof c === "string" && c.trim() && !c.startsWith("super-webdev-")).join(".");
+      if (cls) classesAttr = `.${cls}`;
+    }
+    const rect = el.getBoundingClientRect();
+    const width = Math.round(rect.width);
+    const height = Math.round(rect.height);
+    detailsSlot.innerHTML = `
+      <div class="inspector-drawer-container">
+        <!-- Header -->
+        <div class="inspector-meta-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="inspector-meta-tag" style="color:var(--accent-purple); font-weight:600; font-family:monospace; font-size:12px;">${tagName}</div>
+            <div style="color:var(--accent-yellow); font-family:monospace; font-size:11px;">${idAttr}</div>
+          </div>
+          <div class="inspector-meta-right" style="display:flex; align-items:center; gap:10px; color:var(--text-secondary); font-size:11px; font-family:monospace;">
+            <span>${width} \xD7 ${height}</span>
+            <button class="inspector-meta-btn" id="inspector-copy-sel-btn" title="Copy selector" style="background:none; border:none; color:inherit; cursor:pointer;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
+            <button class="inspector-meta-btn" id="inspector-reset-el-btn" title="Reset styles" style="background:none; border:none; color:inherit; cursor:pointer;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Selector input bar -->
+        <input type="text" class="inspector-selector-bar" value="${classesAttr ? tagName + classesAttr : tagName}" readonly style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:6px 12px; font-family:monospace; font-size:11px; color:#fff; width:100%; margin-bottom:16px;" />
+
+        <!-- 9 Tabs filter -->
+        <div class="inspector-filter-tabs" style="display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:12px;">
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "all" ? "active" : ""}" data-tab="all" title="All properties" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "all" ? "var(--accent-purple)" : "rgba(255,255,255,0.05)"}; color:#fff; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          </button>
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "web-layout" ? "active" : ""}" data-tab="web-layout" title="Web Layout" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "web-layout" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          </button>
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "typography" ? "active" : ""}" data-tab="typography" title="Typography" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "typography" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+            <span style="font-family:serif; font-size:12px; font-weight:bold; line-height:14px;">Aa</span>
+          </button>
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "color" ? "active" : ""}" data-tab="color" title="Colors" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "color" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </button>
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "effects" ? "active" : ""}" data-tab="effects" title="Effects" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "effects" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.18 4.18l15.64 15.64M4.18 19.82l15.64-15.64"></path></svg>
+          </button>
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "background" ? "active" : ""}" data-tab="background" title="Background" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "background" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "grid" ? "active" : ""}" data-tab="grid" title="Grid" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "grid" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          </button>
+          <button class="inspector-filter-btn ${state2.activeInspectorTab === "code" ? "active" : ""}" data-tab="code" title="Code Mode" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "code" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          </button>
+        </div>
+
+        <!-- Properties list -->
+        <div class="inspector-properties-list custom-scroll" id="inspector-props-list-slot"></div>
+
+        <!-- Add Property row -->
+        <button class="add-prop-btn" id="inspector-add-prop-btn">
+          <span>+</span> Add property
+        </button>
+
+        <!-- CSS Code Pane -->
+        <div class="inspector-css-pane" id="inspector-css-pane-slot">
+          <div class="inspector-css-pane-header">
+            <span class="inspector-css-pane-title">css</span>
+            <div class="inspector-css-pane-actions">
+              <button class="inspector-css-btn" id="inspector-css-reset-btn">Reset</button>
+              <button class="inspector-css-btn" id="inspector-css-copy-btn">Copy</button>
+            </div>
+          </div>
+          <div class="inspector-css-code-box custom-scroll" id="inspector-css-code-slot"></div>
+        </div>
+
+        <!-- Footer keys -->
+        <div class="inspector-drawer-footer">
+          <div><span class="inspector-footer-key">Esc</span> close</div>
+          <div><span class="inspector-footer-key">\u2318K</span> switch tool</div>
+        </div>
+      </div>
+    `;
+    detailsSlot.querySelector("#inspector-copy-sel-btn").onclick = () => {
+      const sel = classesAttr ? tagName + classesAttr : tagName;
+      navigator.clipboard.writeText(sel);
+      showToast("Selector copied!");
+    };
+    const resetStyles = () => {
+      el.setAttribute("style", state2.originalStyles.get(el));
+      state2.disabledStyles.set(el, /* @__PURE__ */ new Set());
+      showToast("Element styles reset!");
+      renderCSSDetailsInDrawer();
+      const newRect = el.getBoundingClientRect();
+      showHighlight(newRect, "");
+    };
+    detailsSlot.querySelector("#inspector-reset-el-btn").onclick = resetStyles;
+    detailsSlot.querySelector("#inspector-css-reset-btn").onclick = resetStyles;
+    detailsSlot.querySelector("#inspector-css-copy-btn").onclick = () => {
+      const codeSlot = detailsSlot.querySelector("#inspector-css-code-slot");
+      navigator.clipboard.writeText(codeSlot.innerText);
+      showToast("CSS copied to clipboard!");
+    };
+    const tabBtns = detailsSlot.querySelectorAll(".inspector-filter-btn");
+    tabBtns.forEach((btn) => {
+      btn.onclick = () => {
+        tabBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        state2.activeInspectorTab = btn.getAttribute("data-tab");
+        renderPropertiesList();
+      };
+    });
+    detailsSlot.querySelector("#inspector-add-prop-btn").onclick = () => {
+      const listSlot = detailsSlot.querySelector("#inspector-props-list-slot");
+      const existingAddRow = listSlot.querySelector(".add-prop-input-row");
+      if (existingAddRow) {
+        existingAddRow.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+      const addRow = document.createElement("div");
+      addRow.className = "inspector-prop-row add-prop-input-row";
+      addRow.style.marginTop = "6px";
+      addRow.innerHTML = `
+        <div class="inspector-prop-left" style="flex:1;">
+          <input type="text" placeholder="property-name" class="prop-add-name-input" style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 6px; font-family:monospace; font-size:10px; color:#fff; width:100%; outline:none;" />
+        </div>
+        <div class="inspector-prop-right" style="flex:1.2; justify-content:space-between; gap:6px;">
+          <input type="text" placeholder="value" class="prop-add-val-input" style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 6px; font-family:monospace; font-size:10px; color:#fff; width:65px; outline:none;" />
+          <button class="hud-btn primary" style="padding:4px 8px; font-size:9px; border-radius:4px; height:22px;">Add</button>
+        </div>
+      `;
+      const submitBtn = addRow.querySelector("button");
+      const nameInput = addRow.querySelector(".prop-add-name-input");
+      const valInput = addRow.querySelector(".prop-add-val-input");
+      const submitAdd = () => {
+        const name = nameInput.value.trim().toLowerCase();
+        const val = valInput.value.trim();
+        if (name && val) {
+          el.style[name] = val;
+          showToast(`Added property: ${name}`);
+          renderCSSDetailsInDrawer();
+          const newRect = el.getBoundingClientRect();
+          showHighlight(newRect, "");
+        }
+      };
+      submitBtn.onclick = submitAdd;
+      valInput.onkeydown = (e) => {
+        if (e.key === "Enter") submitAdd();
+      };
+      nameInput.onkeydown = (e) => {
+        if (e.key === "Enter") valInput.focus();
+      };
+      listSlot.appendChild(addRow);
+      nameInput.focus();
+      listSlot.scrollTop = listSlot.scrollHeight;
+    };
+    function renderPropertiesList() {
+      const listSlot = detailsSlot.querySelector("#inspector-props-list-slot");
+      const cssPane = detailsSlot.querySelector("#inspector-css-pane-slot");
+      const addBtn = detailsSlot.querySelector("#inspector-add-prop-btn");
+      const activeTab = state2.activeInspectorTab;
+      if (activeTab === "code") {
+        listSlot.style.display = "none";
+        addBtn.style.display = "none";
+        cssPane.style.flex = "1";
+        cssPane.style.height = "calc(100% - 90px)";
+      } else {
+        listSlot.style.display = "flex";
+        addBtn.style.display = "flex";
+        cssPane.style.flex = "none";
+        cssPane.style.height = "160px";
+      }
+      const propNames = PROPERTIES_BY_TAB[activeTab] || PROPERTIES_BY_TAB.all;
+      listSlot.innerHTML = "";
+      propNames.forEach((propName) => {
+        let propVal = el.style.getPropertyValue(propName) || computed.getPropertyValue(propName) || computed[propName] || "";
+        const isDisabled = disabledSet.has(propName);
+        if (isDisabled) {
+          const cached = valuesMap[propName];
+          propVal = cached ? cached.inline || cached.computed : propVal;
+        }
+        const row = document.createElement("div");
+        row.className = "inspector-prop-row";
+        if (isDisabled) row.style.opacity = "0.45";
+        const eyeClass = isDisabled ? "prop-eye-toggle" : "prop-eye-toggle active";
+        const eyeIcon = isDisabled ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>` : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        let controlHTML = "";
+        let propType = "text";
+        let options = [];
+        let sliderMin = 0, sliderMax = 100, sliderUnit = "px";
+        if (propName === "display") {
+          propType = "select";
+          options = ["block", "flex", "grid", "inline-block", "inline", "none"];
+        } else if (propName === "-webkit-font-smoothing") {
+          propType = "select";
+          options = ["antialiased", "subpixel-antialiased", "none", "auto"];
+        } else if (propName === "box-sizing") {
+          propType = "select";
+          options = ["border-box", "content-box"];
+        } else if (propName === "font-weight") {
+          propType = "select";
+          options = ["100", "200", "300", "400", "500", "600", "700", "800", "900", "normal", "bold"];
+        } else if (propName === "align-items") {
+          propType = "select";
+          options = ["stretch", "center", "flex-start", "flex-end", "baseline"];
+        } else if (propName === "justify-content") {
+          propType = "select";
+          options = ["flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly"];
+        } else if (propName === "color" || propName === "background-color") {
+          propType = "color";
+        } else if (propName === "border-radius") {
+          propType = "slider";
+          sliderMin = 0;
+          sliderMax = 50;
+          sliderUnit = "px";
+        } else if (propName === "line-height") {
+          propType = "slider";
+          sliderMin = 10;
+          sliderMax = 80;
+          sliderUnit = "px";
+        } else if (propName === "font-size") {
+          propType = "slider";
+          sliderMin = 8;
+          sliderMax = 72;
+          sliderUnit = "px";
+        }
+        if (propType === "slider") {
+          const parsed = parseValAndUnit(propVal);
+          controlHTML = `
+            <div class="prop-slider-wrap">
+              <input type="range" class="prop-slider" min="${sliderMin}" max="${sliderMax}" value="${parsed.value}" ${isDisabled ? "disabled" : ""}>
+              <input type="text" class="prop-slider-num-box" value="${parsed.value}" ${isDisabled ? "disabled" : ""}>
+              <span class="prop-slider-unit">${parsed.unit}</span>
+            </div>
+          `;
+        } else if (propType === "color") {
+          const hexOrRgb = propVal || "transparent";
+          controlHTML = `
+            <div class="prop-input-wrap">
+              <span class="prop-color-picker-swatch" style="background-color: ${hexOrRgb};"></span>
+              <input type="text" value="${propVal}" ${isDisabled ? "disabled" : ""} style="padding-left:0;">
+            </div>
+          `;
+        } else if (propType === "select") {
+          controlHTML = `
+            <div class="prop-input-wrap">
+              <select ${isDisabled ? "disabled" : ""}>
+                ${options.map((opt) => `<option value="${opt}" ${propVal === opt ? "selected" : ""}>${opt}</option>`).join("")}
+              </select>
+            </div>
+          `;
+        } else {
+          controlHTML = `
+            <div class="prop-input-wrap">
+              <input type="text" value="${propVal}" ${isDisabled ? "disabled" : ""}>
+            </div>
+          `;
+        }
+        row.innerHTML = `
+          <div class="inspector-prop-left">
+            <button class="${eyeClass}" title="${isDisabled ? "Enable property" : "Disable property"}">${eyeIcon}</button>
+            <span class="prop-label-name" title="${propName}">${propName}</span>
+          </div>
+          <div class="inspector-prop-right">
+            ${controlHTML}
+          </div>
+        `;
+        const eyeBtn = row.querySelector(".prop-eye-toggle");
+        eyeBtn.onclick = () => {
+          if (isDisabled) {
+            disabledSet.delete(propName);
+            const cached = valuesMap[propName];
+            if (cached && cached.inline) {
+              el.style.setProperty(propName, cached.inline, "important");
+            } else {
+              el.style.removeProperty(propName);
+            }
+            delete valuesMap[propName];
+          } else {
+            disabledSet.add(propName);
+            valuesMap[propName] = {
+              inline: el.style.getPropertyValue(propName),
+              computed: propVal
+            };
+            el.style.setProperty(propName, "unset", "important");
+          }
+          renderPropertiesList();
+          const newRect = el.getBoundingClientRect();
+          showHighlight(newRect, "");
+        };
+        const updateStyleValue = (newVal) => {
+          if (isDisabled) return;
+          el.style.setProperty(propName, newVal, "important");
+          updateCodeBox();
+          const newRect = el.getBoundingClientRect();
+          showHighlight(newRect, "");
+        };
+        if (propType === "slider") {
+          const slider = row.querySelector(".prop-slider");
+          const numBox = row.querySelector(".prop-slider-num-box");
+          const unit = sliderUnit;
+          slider.oninput = () => {
+            numBox.value = slider.value;
+            updateStyleValue(slider.value + unit);
+          };
+          numBox.oninput = () => {
+            slider.value = numBox.value;
+            updateStyleValue(numBox.value + unit);
+          };
+        } else if (propType === "select") {
+          const select = row.querySelector("select");
+          select.onchange = () => {
+            updateStyleValue(select.value);
+          };
+        } else if (propType === "color") {
+          const textInput = row.querySelector("input");
+          const swatch = row.querySelector(".prop-color-picker-swatch");
+          textInput.oninput = () => {
+            swatch.style.backgroundColor = textInput.value;
+            updateStyleValue(textInput.value);
+          };
+        } else {
+          const textInput = row.querySelector("input");
+          textInput.oninput = () => {
+            updateStyleValue(textInput.value);
+          };
+        }
+        listSlot.appendChild(row);
+      });
+      updateCodeBox();
+    }
+    function updateCodeBox() {
+      const codeSlot = detailsSlot.querySelector("#inspector-css-code-slot");
+      if (!codeSlot) return;
+      let classes = "";
+      if (el.classList && el.classList.length > 0) {
+        const cls = Array.from(el.classList).filter((c) => typeof c === "string" && c.trim() && !c.startsWith("super-webdev-")).join(".");
+        if (cls) classes = `.${cls}`;
+      }
+      const selector = `${tagName}${classes}`;
+      const propNames = PROPERTIES_BY_TAB.all;
+      let lines = [];
+      const disabledSet2 = state2.disabledStyles.get(el) || /* @__PURE__ */ new Set();
+      const valuesMap2 = state2.disabledStyleValues.get(el) || {};
+      propNames.forEach((propName) => {
+        if (disabledSet2.has(propName)) {
+          const cachedVal = valuesMap2[propName] || computed.getPropertyValue(propName) || computed[propName] || "";
+          lines.push(`  <span style="color: rgba(255,255,255,0.25); font-style: italic;">/* ${propName}: ${cachedVal}; */</span>`);
+        } else {
+          const val = el.style[propName] || computed.getPropertyValue(propName) || computed[propName];
+          if (val) {
+            const colorVal = extractColor2(propName, val);
+            let swatch = "";
+            if (colorVal) {
+              swatch = `<span class="css-p-swatch" style="background-color: ${colorVal};"></span>`;
+            }
+            lines.push(`  <span style="color: #38bdf8;">${propName}</span>: ${swatch}<span style="color: #f7f7fa;">${val}</span>;`);
+          }
+        }
+      });
+      codeSlot.innerHTML = `
+<span style="color: #fca5a5;">${selector}</span> {
+${lines.join("\n")}
+}
+      `.trim();
+    }
+    renderPropertiesList();
   }
 
   // src/features/live-text-editor.js
   function setupLiveTextEditor() {
     document.body.contentEditable = "true";
     function drawTextEditorDrawer() {
-      const logsHTML = state.undoStacks.textEdits.map((edit, i) => `
+      const logsHTML = state2.undoStacks.textEdits.map((edit, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${edit.element.tagName.toLowerCase()}&gt; modified</span>
           <button class="hud-btn te-single-restore" data-idx="${i}" style="padding:2px 6px; font-size:9px;">Undo</button>
@@ -233,19 +862,19 @@
           <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 10px 0;">
             Click on any heading, paragraph, or text on the page to change it live.
           </p>
-          <button id="te-reset-all-btn" class="hud-btn danger" style="width:100%; justify-content:center;" ${state.undoStacks.textEdits.length === 0 ? "disabled" : ""}>Reset Webpage Text</button>
+          <button id="te-reset-all-btn" class="hud-btn danger" style="width:100%; justify-content:center;" ${state2.undoStacks.textEdits.length === 0 ? "disabled" : ""}>Reset Webpage Text</button>
         </div>
         <div style="margin-top: 16px;">
-          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Edits History (${state.undoStacks.textEdits.length}):</span>
+          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Edits History (${state2.undoStacks.textEdits.length}):</span>
           <div class="custom-scroll" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto;">
             ${logsHTML || `<div style="font-size:10px; color:var(--text-secondary); text-align:center; padding:10px;">No edits logged.</div>`}
           </div>
         </div>
       `;
-      openDrawer2("Text Editor", "Modify webpage text content", contentHTML, (slot) => {
+      openDrawer("Text Editor", "Modify webpage text content", contentHTML, (slot) => {
         slot.querySelector("#te-reset-all-btn").onclick = () => {
-          while (state.undoStacks.textEdits.length > 0) {
-            const edit = state.undoStacks.textEdits.pop();
+          while (state2.undoStacks.textEdits.length > 0) {
+            const edit = state2.undoStacks.textEdits.pop();
             edit.element.innerHTML = edit.oldHTML;
           }
           showToast("Webpage text reset completed!");
@@ -254,10 +883,10 @@
         slot.querySelectorAll(".te-single-restore").forEach((btn) => {
           btn.onclick = () => {
             const idx = parseInt(btn.getAttribute("data-idx"));
-            const edit = state.undoStacks.textEdits[idx];
+            const edit = state2.undoStacks.textEdits[idx];
             if (edit) {
               edit.element.innerHTML = edit.oldHTML;
-              state.undoStacks.textEdits.splice(idx, 1);
+              state2.undoStacks.textEdits.splice(idx, 1);
               showToast("Edit reverted");
               drawTextEditorDrawer();
             }
@@ -275,7 +904,7 @@
       const oldVal = e.target.dataset.oldText;
       const newVal = e.target.innerHTML;
       if (oldVal !== newVal) {
-        state.undoStacks.textEdits.push({
+        state2.undoStacks.textEdits.push({
           element: e.target,
           oldHTML: oldVal,
           newHTML: newVal
@@ -315,17 +944,17 @@
         ${cardsHTML}
       </div>
     `;
-    openDrawer2("Font Changer", "Swap global page typography", contentHTML, (slot) => {
+    openDrawer("Font Changer", "Swap global page typography", contentHTML, (slot) => {
       slot.querySelectorAll(".font-card").forEach((card) => {
         card.onclick = () => {
           const fontName = card.getAttribute("data-font");
           const linkId = `gfont-${fontName.toLowerCase().replace(/\s+/g, "-")}`;
-          if (!state.shadowRoot.getElementById(linkId)) {
+          if (!state2.shadowRoot.getElementById(linkId)) {
             const link = document.createElement("link");
             link.id = linkId;
             link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;
             link.rel = "stylesheet";
-            state.shadowRoot.appendChild(link);
+            state2.shadowRoot.appendChild(link);
             const pageLink = document.createElement("link");
             pageLink.id = linkId;
             pageLink.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;
@@ -337,6 +966,39 @@
         };
       });
     });
+  }
+
+  // src/features/list-fonts.js
+  function setupListFonts() {
+    const fontsMap = {};
+    const allElements = document.getElementsByTagName("*");
+    for (let i = 0; i < allElements.length; i++) {
+      const style = window.getComputedStyle(allElements[i]);
+      const fontFamily = style.fontFamily;
+      if (fontFamily) {
+        const cleanFont = fontFamily.split(",")[0].trim().replace(/['"]/g, "");
+        fontsMap[cleanFont] = (fontsMap[cleanFont] || 0) + 1;
+      }
+    }
+    const fontList = Object.entries(fontsMap).sort((a, b) => b[1] - a[1]);
+    const cardsHTML = fontList.map(([fontName, count]) => `
+      <div class="font-card" style="font-family: '${fontName}', sans-serif; cursor: default;">
+        <div class="font-card-name">${fontName}</div>
+        <div class="font-card-preview">Used on ${count} element(s)</div>
+      </div>
+    `).join("");
+    const contentHTML = `
+      <div class="audit-card">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">\u{1F4CB} Typography Audit</div>
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 10px 0;">
+          Analyzed all unique font families currently loaded and active on this webpage.
+        </p>
+      </div>
+      <div class="fonts-grid custom-scroll" style="max-height: 320px; overflow-y: auto;">
+        ${cardsHTML || '<div style="font-size:11px; color:var(--text-secondary); text-align:center; padding:20px;">No fonts detected.</div>'}
+      </div>
+    `;
+    openDrawer("Fonts List", "Typography usage diagnostics", contentHTML);
   }
 
   // src/features/color-picker.js
@@ -378,28 +1040,93 @@
         </div>
         <div id="cp-picked-results">${resultHTML}</div>
       `;
-      openDrawer2("Color Picker", "Pipette selected color codes", contentHTML, (slot) => {
+      openDrawer("Color Picker", "Pipette selected color codes", contentHTML, (slot) => {
         slot.querySelector("#cp-start-picker-btn").onclick = () => {
           if (!window.EyeDropper) {
-            showToast2("EyeDropper not supported in this browser!");
+            showToast("EyeDropper not supported in this browser!");
             return;
           }
           const eyeDropper = new EyeDropper();
           eyeDropper.open().then((res) => {
             navigator.clipboard.writeText(res.sRGBHex.toUpperCase());
-            showToast2(`Copied picked color: ${res.sRGBHex.toUpperCase()}`);
+            showToast(`Copied picked color: ${res.sRGBHex.toUpperCase()}`);
             drawColorPickerDrawer(res.sRGBHex);
           });
         };
         slot.querySelectorAll(".cp-val-copy").forEach((btn) => {
           btn.onclick = () => {
             navigator.clipboard.writeText(btn.getAttribute("data-val"));
-            showToast2("Copied value to clipboard!");
+            showToast("Copied value to clipboard!");
           };
         });
       });
     }
     drawColorPickerDrawer();
+  }
+
+  // src/features/color-palette.js
+  function setupColorPalette() {
+    const colorsMap = {};
+    const bgColorsMap = {};
+    const allElements = document.getElementsByTagName("*");
+    for (let i = 0; i < allElements.length; i++) {
+      const style = window.getComputedStyle(allElements[i]);
+      const color = style.color;
+      const bgColor = style.backgroundColor;
+      if (color && color !== "rgba(0, 0, 0, 0)" && color !== "transparent") {
+        colorsMap[color] = (colorsMap[color] || 0) + 1;
+      }
+      if (bgColor && bgColor !== "rgba(0, 0, 0, 0)" && bgColor !== "transparent") {
+        bgColorsMap[bgColor] = (bgColorsMap[bgColor] || 0) + 1;
+      }
+    }
+    const textList = Object.entries(colorsMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const bgList = Object.entries(bgColorsMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const textSwatchesHTML = textList.map(([col, count]) => `
+      <div class="swatch-card" data-color="${col}">
+        <div class="swatch-color" style="background-color: ${col};"></div>
+        <div class="swatch-text">${col}</div>
+        <div style="font-size: 8px; color: var(--text-secondary);">${count} times</div>
+      </div>
+    `).join("");
+    const bgSwatchesHTML = bgList.map(([col, count]) => `
+      <div class="swatch-card" data-color="${col}">
+        <div class="swatch-color" style="background-color: ${col};"></div>
+        <div class="swatch-text">${col}</div>
+        <div style="font-size: 8px; color: var(--text-secondary);">${count} times</div>
+      </div>
+    `).join("");
+    const contentHTML = `
+      <div class="audit-card">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">\u{1F3A8} Color Scheme Extractor</div>
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 10px 0;">
+          Extracted most frequent colors. Click on any color card below to copy its value to the clipboard.
+        </p>
+      </div>
+      
+      <div style="margin-bottom:12px;">
+        <span style="font-size: 10px; text-transform: uppercase; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 700;">Text Colors</span>
+        <div class="color-swatches-grid custom-scroll" style="max-height: 150px; overflow-y: auto;">
+          ${textSwatchesHTML || '<div style="font-size:11px; color:var(--text-secondary); padding:10px;">No text colors extracted.</div>'}
+        </div>
+      </div>
+
+      <div>
+        <span style="font-size: 10px; text-transform: uppercase; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 700;">Background Colors</span>
+        <div class="color-swatches-grid custom-scroll" style="max-height: 150px; overflow-y: auto;">
+          ${bgSwatchesHTML || '<div style="font-size:11px; color:var(--text-secondary); padding:10px;">No background colors extracted.</div>'}
+        </div>
+      </div>
+    `;
+    openDrawer("Color Palette", "Dominant page style colors", contentHTML, (slot) => {
+      slot.querySelectorAll(".swatch-card").forEach((swatch) => {
+        swatch.onclick = () => {
+          const colorVal = swatch.getAttribute("data-color");
+          navigator.clipboard.writeText(colorVal);
+          showToast(`Copied color: ${colorVal}`);
+        };
+      });
+    });
   }
 
   // src/features/extract-images.js
@@ -489,7 +1216,7 @@
       slot.querySelectorAll(".extract-img-copy-btn").forEach((btn) => {
         btn.onclick = () => {
           navigator.clipboard.writeText(btn.getAttribute("data-url"));
-          showToast2("Copied image URL!");
+          showToast("Copied image URL!");
         };
       });
       slot.querySelectorAll(".extract-img-open-btn").forEach((btn) => {
@@ -563,7 +1290,7 @@
       <div id="images-grid-slot" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; max-height:400px; overflow-y:auto; padding-right:4px;" class="custom-scroll">
       </div>
     `;
-    openDrawer2("Extract Images", "Media asset download center", contentHTML, (slot) => {
+    openDrawer("Extract Images", "Media asset download center", contentHTML, (slot) => {
       renderGrid(slot);
       slot.querySelector("#img-search-input").addEventListener("input", (e) => {
         searchQuery = e.target.value;
@@ -597,7 +1324,7 @@
       });
       const dlAllBtn = slot.querySelector("#extract-dl-all-btn");
       dlAllBtn.onclick = () => {
-        showToast2("Downloading filtered images...");
+        showToast("Downloading filtered images...");
         const filtered = imagesList.filter((img) => {
           if (activeTypeFilter !== "All" && img.type !== activeTypeFilter) return false;
           if (searchQuery) {
@@ -638,7 +1365,7 @@
   // src/features/move-element.js
   function setupMoveElement() {
     function drawMoveDrawer() {
-      const logsHTML = state.undoStacks.movedElements.map((move, i) => `
+      const logsHTML = state2.undoStacks.movedElements.map((move, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${move.element.tagName.toLowerCase()}&gt; translated</span>
           <button class="hud-btn move-single-restore" data-idx="${i}" style="padding:2px 6px; font-size:9px;">Reset</button>
@@ -656,20 +1383,20 @@
           </p>
         </div>
         <div style="margin-top:16px;">
-          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Moved components (${state.undoStacks.movedElements.length}):</span>
+          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Moved components (${state2.undoStacks.movedElements.length}):</span>
           <div class="custom-scroll" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto;">
             ${logsHTML || `<div style="font-size:10px; color:var(--text-secondary); text-align:center; padding:10px;">No components moved.</div>`}
           </div>
         </div>
       `;
-      openDrawer2("Move Element", "Drag & Drop layouts positioner", contentHTML, (slot) => {
+      openDrawer("Move Element", "Drag & Drop layouts positioner", contentHTML, (slot) => {
         slot.querySelectorAll(".move-single-restore").forEach((btn) => {
           btn.onclick = () => {
             const idx = parseInt(btn.getAttribute("data-idx"));
-            const record = state.undoStacks.movedElements[idx];
+            const record = state2.undoStacks.movedElements[idx];
             if (record) {
               record.element.style.transform = record.oldTransform;
-              state.undoStacks.movedElements.splice(idx, 1);
+              state2.undoStacks.movedElements.splice(idx, 1);
               showToast("Restored translation position");
               drawMoveDrawer();
             }
@@ -680,31 +1407,31 @@
     drawMoveDrawer();
     trackListener(document, "mouseover", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) return;
-      if (state.selectedElementForMove) return;
+      if (state2.selectedElementForMove) return;
       const rect = e.target.getBoundingClientRect();
       showHighlight(rect, `${e.target.tagName.toLowerCase()} (Click to select)`);
     }, true);
     trackListener(document, "mouseout", (e) => {
-      if (isHUDElement(e.target) || state.selectedElementForMove) return;
+      if (isHUDElement(e.target) || state2.selectedElementForMove) return;
       hideHighlight();
     }, true);
     trackListener(document, "click", (e) => {
       if (isHUDElement(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      if (state.selectedElementForMove) {
-        state.selectedElementForMove = null;
+      if (state2.selectedElementForMove) {
+        state2.selectedElementForMove = null;
         hideHighlight();
         showToast("Element released");
       } else {
-        state.selectedElementForMove = e.target;
+        state2.selectedElementForMove = e.target;
         const rect = e.target.getBoundingClientRect();
         showHighlight(rect, `${e.target.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
       }
     }, true);
     trackListener(document, "keydown", (e) => {
-      if (!state.selectedElementForMove) return;
-      const el = state.selectedElementForMove;
+      if (!state2.selectedElementForMove) return;
+      const el = state2.selectedElementForMove;
       const style = window.getComputedStyle(el);
       let tx = 0, ty = 0;
       const matrix = style.transform || style.webkitTransform;
@@ -735,14 +1462,14 @@
           handled = true;
           break;
         case "Escape":
-          state.selectedElementForMove = null;
+          state2.selectedElementForMove = null;
           hideHighlight();
           showToast("Move ended");
           break;
       }
       if (handled) {
         e.preventDefault();
-        state.undoStacks.movedElements.push({ element: el, oldTransform: el.style.transform });
+        state2.undoStacks.movedElements.push({ element: el, oldTransform: el.style.transform });
         el.style.transform = `translate(${tx}px, ${ty}px)`;
         drawMoveDrawer();
         setTimeout(() => {
@@ -755,12 +1482,12 @@
     let dragStartX = 0, dragStartY = 0;
     let initialTx = 0, initialTy = 0;
     trackListener(document, "mousedown", (e) => {
-      if (!state.selectedElementForMove || isHUDElement(e.target)) return;
-      if (e.target !== state.selectedElementForMove && !state.selectedElementForMove.contains(e.target)) return;
+      if (!state2.selectedElementForMove || isHUDElement(e.target)) return;
+      if (e.target !== state2.selectedElementForMove && !state2.selectedElementForMove.contains(e.target)) return;
       isDragging = true;
       dragStartX = e.clientX;
       dragStartY = e.clientY;
-      const style = window.getComputedStyle(state.selectedElementForMove);
+      const style = window.getComputedStyle(state2.selectedElementForMove);
       const matrix = style.transform || style.webkitTransform;
       initialTx = 0;
       initialTy = 0;
@@ -771,21 +1498,21 @@
           initialTy = parseFloat(parts[5]);
         }
       }
-      state.moveStartPos = state.selectedElementForMove.style.transform;
+      state2.moveStartPos = state2.selectedElementForMove.style.transform;
       e.preventDefault();
     }, true);
     trackListener(document, "mousemove", (e) => {
-      if (!isDragging || !state.selectedElementForMove) return;
+      if (!isDragging || !state2.selectedElementForMove) return;
       const dx = e.clientX - dragStartX;
       const dy = e.clientY - dragStartY;
-      state.selectedElementForMove.style.transform = `translate(${initialTx + dx}px, ${initialTy + dy}px)`;
-      const rect = state.selectedElementForMove.getBoundingClientRect();
-      showHighlight(rect, `${state.selectedElementForMove.tagName.toLowerCase()} (Dragging...)`, "var(--accent-purple)");
+      state2.selectedElementForMove.style.transform = `translate(${initialTx + dx}px, ${initialTy + dy}px)`;
+      const rect = state2.selectedElementForMove.getBoundingClientRect();
+      showHighlight(rect, `${state2.selectedElementForMove.tagName.toLowerCase()} (Dragging...)`, "var(--accent-purple)");
     }, true);
     trackListener(document, "mouseup", () => {
       if (isDragging) {
         isDragging = false;
-        state.undoStacks.movedElements.push({ element: state.selectedElementForMove, oldTransform: state.moveStartPos });
+        state2.undoStacks.movedElements.push({ element: state2.selectedElementForMove, oldTransform: state2.moveStartPos });
         drawMoveDrawer();
       }
     }, true);
@@ -794,7 +1521,7 @@
   // src/features/delete-element.js
   function setupDeleteElement() {
     function drawDeleteDrawer() {
-      const logsHTML = state.undoStacks.deletedElements.map((del, i) => `
+      const logsHTML = state2.undoStacks.deletedElements.map((del, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${del.element.tagName.toLowerCase()}&gt; hidden</span>
           <button class="hud-btn del-single-restore" data-idx="${i}" style="padding:2px 6px; font-size:9px;">Restore</button>
@@ -810,20 +1537,20 @@
           </p>
         </div>
         <div style="margin-top:16px;">
-          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Hidden components (${state.undoStacks.deletedElements.length}):</span>
+          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Hidden components (${state2.undoStacks.deletedElements.length}):</span>
           <div class="custom-scroll" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto;">
             ${logsHTML || `<div style="font-size:10px; color:var(--text-secondary); text-align:center; padding:10px;">No elements hidden.</div>`}
           </div>
         </div>
       `;
-      openDrawer2("Delete Element", "Hide element components", contentHTML, (slot) => {
+      openDrawer("Delete Element", "Hide element components", contentHTML, (slot) => {
         slot.querySelectorAll(".del-single-restore").forEach((btn) => {
           btn.onclick = () => {
             const idx = parseInt(btn.getAttribute("data-idx"));
-            const record = state.undoStacks.deletedElements[idx];
+            const record = state2.undoStacks.deletedElements[idx];
             if (record) {
               record.element.style.display = record.oldDisplay;
-              state.undoStacks.deletedElements.splice(idx, 1);
+              state2.undoStacks.deletedElements.splice(idx, 1);
               showToast("Restored hidden element layout");
               drawDeleteDrawer();
             }
@@ -845,7 +1572,7 @@
       if (isHUDElement(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      state.undoStacks.deletedElements.push({
+      state2.undoStacks.deletedElements.push({
         element: e.target,
         oldDisplay: e.target.style.display
       });
@@ -869,7 +1596,7 @@
       </div>
       <div id="export-element-details" style="display: none; margin-top: 14px;"></div>
     `;
-    openDrawer2("Export Element", "Build standalone layouts code", guideHTML);
+    openDrawer("Export Element", "Build standalone layouts code", guideHTML);
     trackListener(document, "mouseover", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) return;
       const rect = e.target.getBoundingClientRect();
@@ -886,6 +1613,98 @@
       renderExportDetailsInDrawer(e.target);
     }, true);
   }
+  function renderExportDetailsInDrawer(element) {
+    const detailsSlot = state2.shadowRoot.getElementById("export-element-details");
+    if (!detailsSlot) return;
+    detailsSlot.style.display = "block";
+    const htmlCode = element.outerHTML;
+    const computed = window.getComputedStyle(element);
+    let cssText = `/* Exported Style rules for ${element.tagName.toLowerCase()} */
+.exported-element {
+`;
+    const rules = [
+      "background-color",
+      "color",
+      "font-family",
+      "font-size",
+      "font-weight",
+      "padding",
+      "margin",
+      "border",
+      "border-radius",
+      "box-shadow",
+      "width",
+      "height",
+      "display",
+      "flex-direction",
+      "justify-content",
+      "align-items"
+    ];
+    rules.forEach((rule) => {
+      const val = computed.getPropertyValue(rule);
+      if (val) cssText += `  ${rule}: ${val};
+`;
+    });
+    cssText += `}
+`;
+    const htmlClean = htmlCode.replace(/ style="[^"]*"/, "").replace(element.tagName.toLowerCase(), `${element.tagName.toLowerCase()} class="exported-element"`);
+    detailsSlot.innerHTML = `
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top:12px;">Export webpage element snippet:</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <button id="export-dl-btn" class="hud-btn primary" style="justify-content:center; padding:10px;">\u{1F4BE} Download HTML/CSS</button>
+        <button id="export-cp-btn" class="hud-btn" style="justify-content:center; padding:10px; background:#000; border-color:#222;">\u{1F680} Open in CodePen</button>
+      </div>
+      <div style="margin-top:16px;">
+        <span style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:6px;">Clean HTML:</span>
+        <textarea style="width:100%; height:100px; font-size:10px; font-family:monospace; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.06); border-radius:6px; color:#c8c8d0; padding:6px; resize:none;" readonly>${htmlClean}</textarea>
+      </div>
+    `;
+    detailsSlot.querySelector("#export-dl-btn").onclick = () => {
+      const fullHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { background: #0c0c0e; color: #f7f7fa; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+    ${cssText}
+  </style>
+</head>
+<body>
+  ${htmlClean}
+</body>
+</html>`;
+      const blob = new Blob([fullHTML], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `exported-${element.tagName.toLowerCase()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("Downloaded standalone HTML");
+    };
+    detailsSlot.querySelector("#export-cp-btn").onclick = () => {
+      const payload = {
+        title: `SuperDev Pro Export <${element.tagName.toLowerCase()}>`,
+        html: htmlClean,
+        css: cssText,
+        editors: "110"
+      };
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "https://codepen.io/pen/define";
+      form.target = "_blank";
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "data";
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+      showToast("Redirected to CodePen!");
+    };
+  }
 
   // src/features/page-ruler.js
   function setupPageRuler() {
@@ -899,8 +1718,8 @@
         </p>
       </div>
     `;
-    openDrawer2("Page Ruler", "Canvas-based layout measurement", guideHTML);
-    const canvas = state.rulerCanvas;
+    openDrawer("Page Ruler", "Canvas-based layout measurement", guideHTML);
+    const canvas = state2.rulerCanvas;
     if (!canvas) return;
     canvas.style.display = "block";
     const ctx = canvas.getContext("2d");
@@ -974,12 +1793,164 @@
       startX = null;
       startY = null;
     }, true);
-    state.activeListeners.push({
+    state2.activeListeners.push({
       target: window,
       event: "resize",
       callback: resizeCanvas,
       useCapture: false
     });
+  }
+
+  // src/features/page-outliner.js
+  function setupPageOutliner() {
+    function drawOutlinerDrawer() {
+      const contentHTML = `
+        <div class="audit-card">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display:flex; align-items:center; gap:6px;">
+            <span>\u{1F532}</span> Layout Outlines Active
+          </div>
+          <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 12px 0;">
+            Webpage DOM nodes are marked with dashed outline boundaries to analyze padding/margins layouts alignment.
+          </p>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <span style="font-size: 11px; color: var(--text-secondary);">Outline Border Color:</span>
+            <select id="outliner-color-select" class="css-editor-textarea" style="height:32px; font-size:11px; font-family:inherit; padding: 4px;">
+              <option value="rgba(184, 163, 252, 0.65)">Purple Accent (Default)</option>
+              <option value="rgba(110, 231, 168, 0.65)">Emerald Green</option>
+              <option value="rgba(244, 114, 182, 0.65)">Rose Pink</option>
+              <option value="rgba(99, 102, 241, 0.65)">Indigo Accent</option>
+              <option value="random">Randomized Color Swatches</option>
+            </select>
+          </div>
+        </div>
+      `;
+      openDrawer("Page Outliner", "Inspect alignment shapes", contentHTML, (slot) => {
+        const select = slot.querySelector("#outliner-color-select");
+        select.value = state2.outlinerColor;
+        select.onchange = (e) => {
+          state2.outlinerColor = e.target.value;
+          applyOutlinerBorders();
+        };
+      });
+    }
+    function applyOutlinerBorders() {
+      if (state2.customStyleElement && state2.customStyleElement.parentNode) {
+        state2.customStyleElement.parentNode.removeChild(state2.customStyleElement);
+      }
+      state2.customStyleElement = document.createElement("style");
+      if (state2.outlinerColor === "random") {
+        let randomCSS = "";
+        const tags = ["div", "section", "article", "aside", "header", "footer", "p", "span", "a", "button", "input", "img"];
+        tags.forEach((t) => {
+          const col = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+          randomCSS += `${t} { outline: 1px dashed ${col} !important; }
+`;
+        });
+        randomCSS += "#super-webdev-hud-host * { outline: none !important; }\n";
+        state2.customStyleElement.textContent = randomCSS;
+      } else {
+        state2.customStyleElement.textContent = `
+          * {
+            outline: 1px dashed ${state2.outlinerColor} !important;
+          }
+          #super-webdev-hud-host * {
+            outline: none !important;
+          }
+        `;
+      }
+      document.head.appendChild(state2.customStyleElement);
+    }
+    drawOutlinerDrawer();
+    applyOutlinerBorders();
+  }
+
+  // src/features/image-replacer.js
+  function setupImageReplacer() {
+    const guideHTML = `
+      <div class="audit-card">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display:flex; align-items:center; gap:6px;">
+          <span>\u{1F504}</span> Image Replacer Active
+        </div>
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0;">
+          Hover and click on any image tag (or layout container styled with background-image) to change its content src.
+        </p>
+      </div>
+      <div id="image-replacer-details" style="display: none; margin-top: 14px;"></div>
+    `;
+    openDrawer("Image Swap", "Visual staging assets updater", guideHTML);
+    trackListener(document, "mouseover", (e) => {
+      if (isHUDElement(e.target)) return;
+      let isImg = e.target.tagName.toLowerCase() === "img";
+      let isBg = false;
+      if (!isImg) {
+        const bg = window.getComputedStyle(e.target).backgroundImage;
+        if (bg && bg !== "none" && bg.startsWith("url(")) isBg = true;
+      }
+      if (isImg || isBg) {
+        const rect = e.target.getBoundingClientRect();
+        showHighlight(rect, `Replace: ${isImg ? "Image Tag" : "Background-Image"} (Click)`, "var(--accent-purple)");
+      }
+    }, true);
+    trackListener(document, "mouseout", (e) => {
+      if (isHUDElement(e.target)) return;
+      hideHighlight();
+    }, true);
+    trackListener(document, "click", (e) => {
+      if (isHUDElement(e.target)) return;
+      let isImg = e.target.tagName.toLowerCase() === "img";
+      let isBg = false;
+      let bgUrl = "";
+      if (!isImg) {
+        const bg = window.getComputedStyle(e.target).backgroundImage;
+        if (bg && bg !== "none" && bg.startsWith("url(")) {
+          isBg = true;
+          const match = bg.match(/url\(["']?([^"']*)["']?\)/);
+          bgUrl = match ? match[1] : "";
+        }
+      }
+      if (isImg || isBg) {
+        e.preventDefault();
+        e.stopPropagation();
+        renderImageSwapDetailsInDrawer(e.target, isBg, isBg ? bgUrl : e.target.src);
+      }
+    }, true);
+  }
+  function renderImageSwapDetailsInDrawer(element, isBg, currentSource) {
+    const detailsSlot = state2.shadowRoot.getElementById("image-replacer-details");
+    if (!detailsSlot) return;
+    detailsSlot.style.display = "block";
+    detailsSlot.innerHTML = `
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top:12px;">Stage replacement image path:</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <button id="repl-file-btn" class="hud-btn primary" style="justify-content:center; padding:10px;">\u{1F4C1} Select Local Image</button>
+        <input type="file" id="repl-file-input" accept="image/*" style="display:none;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:8px;">Or enter web URL:</div>
+        <input type="text" id="repl-url-input" class="css-editor-textarea" style="height:38px;" placeholder="https://example.com/logo.png">
+        <button id="repl-url-btn" class="hud-btn" style="justify-content:center; padding:8px;">Apply URL</button>
+      </div>
+      <div style="margin-top:16px;">
+        <span style="font-size:11px; color:var(--text-secondary); display:block; margin-bottom:6px;">Current Source:</span>
+        <div style="font-size:10px; font-family:monospace; background:rgba(0,0,0,0.2); padding:6px; border-radius:4px; word-break:break-all; color:var(--text-secondary);">
+          ${currentSource}
+        </div>
+      </div>
+    `;
+    const fileInput = detailsSlot.querySelector("#repl-file-input");
+    const fileBtn = detailsSlot.querySelector("#repl-file-btn");
+    const urlInput = detailsSlot.querySelector("#repl-url-input");
+    const urlBtn = detailsSlot.querySelector("#repl-url-btn");
+    fileBtn.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => applyImageReplacement(element, isBg, currentSource, ev.target.result);
+      reader.readAsDataURL(file);
+    };
+    urlBtn.onclick = () => {
+      const url = urlInput.value.trim();
+      if (url) applyImageReplacement(element, isBg, currentSource, url);
+    };
   }
 
   // src/features/take-screenshot.js
@@ -1010,10 +1981,50 @@
       };
     });
   }
+  function openScreenshotPreviewModal(url) {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.zIndex = "2147483647";
+    overlay.style.background = "rgba(0,0,0,0.8)";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    const img = document.createElement("img");
+    img.src = url;
+    img.style.maxWidth = "90%";
+    img.style.maxHeight = "80%";
+    img.style.border = "4px solid var(--accent-purple, #b8a3fc)";
+    img.style.borderRadius = "8px";
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "Close Preview";
+    closeBtn.style.marginTop = "16px";
+    closeBtn.style.padding = "8px 16px";
+    closeBtn.style.background = "#fff";
+    closeBtn.style.color = "#000";
+    closeBtn.style.border = "none";
+    closeBtn.style.borderRadius = "4px";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.onclick = () => overlay.remove();
+    overlay.appendChild(img);
+    overlay.appendChild(closeBtn);
+    state2.shadowRoot.appendChild(overlay);
+  }
 
   // src/features/responsive-viewer.js
+  var DEVICE_CATALOG = [
+    { id: "iphone-se", name: "iPhone SE", width: 375, height: 667, scale: 0.8 },
+    { id: "iphone-14-pro", name: "iPhone 14 Pro", width: 393, height: 852, scale: 0.7 },
+    { id: "iphone-14-pro-max", name: "iPhone 14 Pro Max", width: 430, height: 932, scale: 0.65 },
+    { id: "pixel-7", name: "Pixel 7", width: 412, height: 915, scale: 0.65 },
+    { id: "ipad-mini", name: "iPad Mini", width: 768, height: 1024, scale: 0.5 },
+    { id: "ipad-pro", name: "iPad Pro", width: 1024, height: 1366, scale: 0.4 },
+    { id: "macbook-air", name: "MacBook Air", width: 1280, height: 832, scale: 0.4 },
+    { id: "desktop-1080p", name: "Desktop 1080p", width: 1920, height: 1080, scale: 0.3 }
+  ];
   function setupResponsiveViewer() {
-    let overlay = state.shadowRoot.getElementById("responsive-viewer-overlay");
+    let overlay = state2.shadowRoot.getElementById("responsive-viewer-overlay");
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.id = "responsive-viewer-overlay";
@@ -1023,74 +2034,156 @@
       overlay.style.background = "#0d0f14";
       overlay.style.display = "flex";
       overlay.style.flexDirection = "column";
-      overlay.style.fontFamily = "var(--font-primary)";
-      overlay.style.color = "var(--text-primary)";
+      overlay.style.fontFamily = "var(--font-primary, system-ui)";
+      overlay.style.color = "var(--text-primary, #fff)";
       let activeDevices = [
-        { id: "iphone-14-pro", name: "iPhone 14 Pro", width: 393, height: 852, scale: 1, rotate: false },
-        { id: "ipad-pro", name: "iPad Pro 12.9", width: 1024, height: 1366, scale: 0.51, rotate: false },
-        { id: "macbook-air", name: "MacBook Air", width: 1280, height: 832, scale: 0.41, rotate: false }
+        { ...DEVICE_CATALOG[1], uid: Date.now() + 1, rotate: false },
+        { ...DEVICE_CATALOG[5], uid: Date.now() + 2, rotate: false },
+        { ...DEVICE_CATALOG[6], uid: Date.now() + 3, rotate: false }
       ];
+      let syncScroll = true;
+      let isSyncing = false;
       const renderHeader = () => {
         const pills = activeDevices.map((d) => `
           <div class="device-pill" style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:4px 10px; font-size:11px;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect></svg>
             <span style="font-weight:600;">${d.name}</span>
             <span style="color:var(--text-secondary); font-family:monospace;">${d.rotate ? d.height : d.width}\xD7${d.rotate ? d.width : d.height}</span>
-            <button class="rv-close-device-btn" data-id="${d.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0; display:flex; align-items:center;">&times;</button>
+            <button class="rv-close-device-btn" data-uid="${d.uid}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0; display:flex; align-items:center;">&times;</button>
           </div>
         `).join("");
         return `
           <div style="display:flex; align-items:center; gap:12px; flex:1;">
             ${pills}
-            <button id="rv-add-device-btn" style="display:flex; align-items:center; gap:4px; background:var(--accent-purple); color:#fff; border:none; border-radius:12px; padding:4px 12px; font-size:11px; font-weight:600; cursor:pointer;">
-              + Add <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            
+            <div style="position:relative; display:inline-block;">
+              <button id="rv-add-device-btn" style="display:flex; align-items:center; gap:4px; background:var(--accent-purple, #b8a3fc); color:#121212; border:none; border-radius:12px; padding:4px 12px; font-size:11px; font-weight:600; cursor:pointer;">
+                + Add <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div id="rv-add-dropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; background:#1e1e24; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:100; min-width:160px;">
+                ${DEVICE_CATALOG.map((cat) => `
+                  <div class="rv-cat-item" data-id="${cat.id}" style="padding:6px 12px; font-size:11px; color:#fff; cursor:pointer; border-radius:4px; display:flex; justify-content:space-between;">
+                    <span>${cat.name}</span>
+                    <span style="color:rgba(255,255,255,0.3);">${cat.width}\xD7${cat.height}</span>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+
+            <div style="width:1px; height:16px; background:rgba(255,255,255,0.1); margin:0 8px;"></div>
+            
+            <button id="rv-sync-btn" style="display:flex; align-items:center; gap:6px; background:${syncScroll ? "rgba(74, 222, 128, 0.1)" : "rgba(255,255,255,0.05)"}; color:${syncScroll ? "#4ade80" : "var(--text-secondary)"}; border:1px solid ${syncScroll ? "#4ade8055" : "rgba(255,255,255,0.1)"}; border-radius:12px; padding:4px 12px; font-size:11px; font-weight:600; cursor:pointer;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Sync Scroll ${syncScroll ? "ON" : "OFF"}
             </button>
           </div>
         `;
       };
       const renderFrames = () => {
-        const frames = activeDevices.map((d) => {
+        return activeDevices.map((d) => {
           const dw = d.rotate ? d.height : d.width;
           const dh = d.rotate ? d.width : d.height;
           return `
-            <div style="display:flex; flex-direction:column; align-items:center; flex-shrink:0;">
+            <div class="rv-frame-wrapper" data-uid="${d.uid}" style="display:flex; flex-direction:column; align-items:center; flex-shrink:0;">
               <div style="display:flex; justify-content:space-between; width:${dw * d.scale}px; margin-bottom:8px; align-items:center;">
                 <div style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary);">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect></svg>
                   <span style="color:#fff; font-weight:600;">${d.name}</span>
                   <div style="display:flex; align-items:center; gap:4px; font-family:monospace; background:rgba(255,255,255,0.05); border-radius:4px; padding:2px;">
-                    <input type="number" class="rv-dim-input" data-id="${d.id}" data-axis="w" value="${dw}" style="width:36px; background:none; border:none; color:var(--text-secondary); font-family:monospace; font-size:10px; text-align:right; outline:none;-moz-appearance:textfield;"/>
+                    <input type="number" class="rv-dim-input" data-uid="${d.uid}" data-axis="w" value="${dw}" style="width:36px; background:none; border:none; color:var(--text-secondary); font-family:monospace; font-size:10px; text-align:right; outline:none;-moz-appearance:textfield;"/>
                     <span style="color:rgba(255,255,255,0.2);">\xD7</span>
-                    <input type="number" class="rv-dim-input" data-id="${d.id}" data-axis="h" value="${dh}" style="width:36px; background:none; border:none; color:var(--text-secondary); font-family:monospace; font-size:10px; text-align:left; outline:none;-moz-appearance:textfield;"/>
+                    <input type="number" class="rv-dim-input" data-uid="${d.uid}" data-axis="h" value="${dh}" style="width:36px; background:none; border:none; color:var(--text-secondary); font-family:monospace; font-size:10px; text-align:left; outline:none;-moz-appearance:textfield;"/>
                   </div>
                   <span style="font-family:monospace;">\xB7 ${Math.round(d.scale * 100)}%</span>
                 </div>
                 <div style="display:flex; gap:8px;">
-                  <button class="rv-rotate-btn" data-id="${d.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0;" title="Rotate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button>
-                  <button class="rv-refresh-btn" data-id="${d.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0;" title="Refresh"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
-                  <button class="rv-close-btn" data-id="${d.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0;" title="Close">&times;</button>
+                  <button class="rv-rotate-btn" data-uid="${d.uid}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0;" title="Rotate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button>
+                  <button class="rv-refresh-btn" data-uid="${d.uid}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0;" title="Refresh"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
+                  <button class="rv-close-btn" data-uid="${d.uid}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0;" title="Close">&times;</button>
                 </div>
               </div>
-              <div style="width:${dw * d.scale}px; height:${dh * d.scale}px; border:1px solid rgba(255,255,255,0.1); border-radius:12px; overflow:hidden; position:relative; background:#fff;">
-                <iframe src="${window.location.href}" style="width:${dw}px; height:${dh}px; transform:scale(${d.scale}); transform-origin:top left; border:none; position:absolute; top:0; left:0;"></iframe>
+              <div class="rv-iframe-container" style="width:${dw * d.scale}px; height:${dh * d.scale}px; border:1px solid rgba(255,255,255,0.1); border-radius:12px; overflow:hidden; position:relative; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+                <iframe src="${window.location.href}" style="width:${dw}px; height:${dh}px; transform:scale(${d.scale}); transform-origin:top left; border:none; position:absolute; top:0; left:0; pointer-events:auto;"></iframe>
+                <div class="rv-resize-handle" data-uid="${d.uid}" style="position:absolute; bottom:0; right:0; width:20px; height:20px; cursor:nwse-resize; z-index:10; background:linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.2) 50%); border-bottom-right-radius:10px;"></div>
               </div>
             </div>
           `;
         }).join("");
-        return frames;
+      };
+      const setupIframes = () => {
+        const iframes = overlay.querySelectorAll("iframe");
+        iframes.forEach((iframe) => {
+          iframe.onload = () => {
+            try {
+              const win = iframe.contentWindow;
+              if (!win) return;
+              win.addEventListener("scroll", (e) => {
+                if (!syncScroll || isSyncing) return;
+                isSyncing = true;
+                const doc = win.document.documentElement;
+                const percentX = win.scrollX / (doc.scrollWidth - doc.clientWidth || 1);
+                const percentY = win.scrollY / (doc.scrollHeight - doc.clientHeight || 1);
+                iframes.forEach((other) => {
+                  if (other !== iframe) {
+                    try {
+                      const otherWin = other.contentWindow;
+                      const otherDoc = otherWin.document.documentElement;
+                      otherWin.scrollTo(
+                        percentX * (otherDoc.scrollWidth - otherDoc.clientWidth),
+                        percentY * (otherDoc.scrollHeight - otherDoc.clientHeight)
+                      );
+                    } catch (err) {
+                    }
+                  }
+                });
+                requestAnimationFrame(() => {
+                  isSyncing = false;
+                });
+              });
+            } catch (e) {
+              console.warn("Cross-origin iframe blocked sync scrolling");
+            }
+          };
+        });
       };
       const updateUI = () => {
         overlay.querySelector("#rv-header-slot").innerHTML = renderHeader();
         overlay.querySelector("#rv-frames-slot").innerHTML = renderFrames();
+        overlay.querySelector("#rv-sync-btn").onclick = () => {
+          syncScroll = !syncScroll;
+          updateUI();
+        };
+        const addBtn = overlay.querySelector("#rv-add-device-btn");
+        const addDrop = overlay.querySelector("#rv-add-dropdown");
+        addBtn.onclick = () => {
+          addDrop.style.display = addDrop.style.display === "none" ? "block" : "none";
+        };
+        overlay.querySelectorAll(".rv-cat-item").forEach((item) => {
+          item.onmouseenter = () => item.style.background = "rgba(255,255,255,0.1)";
+          item.onmouseleave = () => item.style.background = "transparent";
+          item.onclick = () => {
+            const catId = item.getAttribute("data-id");
+            const cat = DEVICE_CATALOG.find((c) => c.id === catId);
+            if (cat) {
+              activeDevices.push({ ...cat, uid: Date.now(), rotate: false });
+              updateUI();
+            }
+          };
+        });
+        overlay.onclick = (e) => {
+          if (!e.target.closest("#rv-add-device-btn") && !e.target.closest("#rv-add-dropdown")) {
+            if (addDrop) addDrop.style.display = "none";
+          }
+        };
         overlay.querySelectorAll(".rv-close-device-btn, .rv-close-btn").forEach((btn) => {
           btn.onclick = () => {
-            activeDevices = activeDevices.filter((d) => d.id !== btn.getAttribute("data-id"));
+            activeDevices = activeDevices.filter((d) => d.uid != btn.getAttribute("data-uid"));
             updateUI();
           };
         });
         overlay.querySelectorAll(".rv-rotate-btn").forEach((btn) => {
           btn.onclick = () => {
-            const dev = activeDevices.find((d) => d.id === btn.getAttribute("data-id"));
+            const dev = activeDevices.find((d) => d.uid == btn.getAttribute("data-uid"));
             if (dev) {
               dev.rotate = !dev.rotate;
               updateUI();
@@ -1098,13 +2191,11 @@
           };
         });
         overlay.querySelectorAll(".rv-refresh-btn").forEach((btn) => {
-          btn.onclick = () => {
-            updateUI();
-          };
+          btn.onclick = () => updateUI();
         });
         overlay.querySelectorAll(".rv-dim-input").forEach((input) => {
-          input.onchange = (e) => {
-            const dev = activeDevices.find((d) => d.id === input.getAttribute("data-id"));
+          input.onkeyup = (e) => {
+            const dev = activeDevices.find((d) => d.uid == input.getAttribute("data-uid"));
             if (dev) {
               const val = parseInt(e.target.value) || 100;
               if (input.getAttribute("data-axis") === "w") {
@@ -1114,35 +2205,96 @@
                 if (dev.rotate) dev.width = val;
                 else dev.height = val;
               }
-              updateUI();
+              const wrapper = overlay.querySelector(`.rv-frame-wrapper[data-uid="${dev.uid}"]`);
+              if (wrapper) {
+                const dw = dev.rotate ? dev.height : dev.width;
+                const dh = dev.rotate ? dev.width : dev.height;
+                const container = wrapper.querySelector(".rv-iframe-container");
+                const iframe = container.querySelector("iframe");
+                wrapper.firstElementChild.style.width = `${dw * dev.scale}px`;
+                container.style.width = `${dw * dev.scale}px`;
+                container.style.height = `${dh * dev.scale}px`;
+                iframe.style.width = `${dw}px`;
+                iframe.style.height = `${dh}px`;
+              }
             }
           };
+          input.onchange = () => updateUI();
         });
+        overlay.querySelectorAll(".rv-resize-handle").forEach((handle) => {
+          let startX, startY, startW, startH, dev, wrapper, container, iframe, inputs;
+          handle.onmousedown = (e) => {
+            e.preventDefault();
+            const uid = handle.getAttribute("data-uid");
+            dev = activeDevices.find((d) => d.uid == uid);
+            if (!dev) return;
+            wrapper = overlay.querySelector(`.rv-frame-wrapper[data-uid="${dev.uid}"]`);
+            container = wrapper.querySelector(".rv-iframe-container");
+            iframe = container.querySelector("iframe");
+            inputs = wrapper.querySelectorAll(".rv-dim-input");
+            startX = e.clientX;
+            startY = e.clientY;
+            startW = dev.rotate ? dev.height : dev.width;
+            startH = dev.rotate ? dev.width : dev.height;
+            overlay.querySelectorAll("iframe").forEach((ifr) => ifr.style.pointerEvents = "none");
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+          };
+          const onMouseMove = (e) => {
+            const dx = (e.clientX - startX) / dev.scale;
+            const dy = (e.clientY - startY) / dev.scale;
+            const newW = Math.max(200, Math.round(startW + dx));
+            const newH = Math.max(200, Math.round(startH + dy));
+            if (dev.rotate) {
+              dev.height = newW;
+              dev.width = newH;
+            } else {
+              dev.width = newW;
+              dev.height = newH;
+            }
+            wrapper.firstElementChild.style.width = `${newW * dev.scale}px`;
+            container.style.width = `${newW * dev.scale}px`;
+            container.style.height = `${newH * dev.scale}px`;
+            iframe.style.width = `${newW}px`;
+            iframe.style.height = `${newH}px`;
+            inputs[0].value = newW;
+            inputs[1].value = newH;
+          };
+          const onMouseUp = () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+            overlay.querySelectorAll("iframe").forEach((ifr) => ifr.style.pointerEvents = "auto");
+            updateUI();
+          };
+        });
+        setupIframes();
       };
       overlay.innerHTML = `
         <!-- Top bar -->
-        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); gap:20px; background:#12141a;">
+        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); gap:20px; background:#12141a; position:relative; z-index:20;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple, #b8a3fc)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
             <span style="font-size: 16px; font-weight: 600;">Responsive Viewer</span>
             <div style="width:6px; height:6px; background:#4ade80; border-radius:50%; box-shadow:0 0 8px #4ade80;"></div>
           </div>
           
           <div id="rv-header-slot" style="display:flex; align-items:center; gap:12px; flex:1;"></div>
 
-          <button id="rv-exit-btn" style="margin-left:auto; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:var(--text-secondary); cursor:pointer; padding:6px 12px; display:flex; align-items:center; gap:6px; font-size:11px;">
+          <button id="rv-exit-btn" style="margin-left:auto; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:var(--text-secondary); cursor:pointer; padding:6px 12px; display:flex; align-items:center; gap:6px; font-size:11px; transition:background 0.2s;">
             <span style="font-family:monospace;">Esc</span> close
           </button>
         </div>
         
         <!-- Frames Area -->
-        <div id="rv-frames-slot" class="custom-scroll" style="flex:1; display:flex; gap:30px; padding:30px; overflow-x:auto; overflow-y:auto; background:#0d0f14;"></div>
+        <div id="rv-frames-slot" class="custom-scroll" style="flex:1; display:flex; gap:40px; padding:40px; overflow-x:auto; overflow-y:auto; background:#0d0f14;"></div>
       `;
-      state.shadowRoot.appendChild(overlay);
+      state2.shadowRoot.appendChild(overlay);
       overlay.querySelector("#rv-exit-btn").onclick = () => {
         overlay.style.display = "none";
-        deactivateCurrentTool();
+        deactivateCurrentTool2();
       };
+      overlay.querySelector("#rv-exit-btn").onmouseenter = (e) => e.target.style.background = "rgba(255,255,255,0.1)";
+      overlay.querySelector("#rv-exit-btn").onmouseleave = (e) => e.target.style.background = "rgba(255,255,255,0.05)";
       updateUI();
     } else {
       overlay.style.display = "flex";
@@ -1151,7 +2303,7 @@
 
   // src/features/settings.js
   function setupSettings() {
-    let modal = state.shadowRoot.getElementById("settings-modal-overlay");
+    let modal = state2.shadowRoot.getElementById("settings-modal-overlay");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "settings-modal-overlay";
@@ -1246,7 +2398,7 @@
           </div>
         </div>
       `;
-      state.shadowRoot.appendChild(modal);
+      state2.shadowRoot.appendChild(modal);
       const contentPanes = {
         "Account": `
           <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Account</h2>
@@ -1486,20 +2638,197 @@
       });
       modal.querySelector("#settings-close-btn").onclick = () => {
         modal.style.display = "none";
-        deactivateCurrentTool();
+        deactivateCurrentTool2();
       };
     } else {
       modal.style.display = "flex";
     }
   }
 
+  // src/features/tech-stack.js
+  function setupTechStack() {
+    const stack = [];
+    const scriptTags = Array.from(document.getElementsByTagName("script"));
+    const scriptSrcs = scriptTags.map((s) => s.src.toLowerCase()).filter(Boolean);
+    const linkTags = Array.from(document.getElementsByTagName("link"));
+    const linkHrefs = linkTags.map((l) => l.href.toLowerCase()).filter(Boolean);
+    if (document.querySelector("[data-reactroot]") || document.querySelector("#react-root") || scriptSrcs.some((s) => s.includes("react"))) {
+      stack.push({ name: "React", category: "Frontend Framework", icon: "\u269B\uFE0F" });
+    }
+    if (document.getElementById("__NEXT_DATA__") || scriptSrcs.some((s) => s.includes("_next/static"))) {
+      stack.push({ name: "Next.js", category: "Server SSR Framework", icon: "\u25B2" });
+    }
+    if (document.querySelector("[v-cloak]") || scriptSrcs.some((s) => s.includes("vue"))) {
+      stack.push({ name: "Vue.js", category: "Frontend Framework", icon: "\u{1F49A}" });
+    }
+    if (document.querySelector("[ng-version]") || document.querySelector("[ng-app]") || scriptSrcs.some((s) => s.includes("angular"))) {
+      stack.push({ name: "Angular", category: "Frontend Platform", icon: "\u{1F170}\uFE0F" });
+    }
+    if (scriptSrcs.some((s) => s.includes("jquery"))) {
+      stack.push({ name: "jQuery", category: "Legacy DOM Library", icon: "\u{1F4B8}" });
+    }
+    const generator = document.querySelector('meta[name="generator"]')?.content || "";
+    if (generator.toLowerCase().includes("wordpress") || linkHrefs.some((h) => h.includes("wp-content") || h.includes("wp-includes"))) {
+      stack.push({ name: "WordPress", category: "CMS Engine", icon: "\u{1F4DD}" });
+    }
+    if (scriptSrcs.some((s) => s.includes("cdn.shopify.com")) || generator.toLowerCase().includes("shopify")) {
+      stack.push({ name: "Shopify", category: "Ecommerce CMS", icon: "\u{1F6CD}\uFE0F" });
+    }
+    if (linkHrefs.some((h) => h.includes("tailwind")) || document.querySelector("[class*='grid-cols-']")) {
+      stack.push({ name: "Tailwind CSS", category: "CSS Utility Framework", icon: "\u{1F3A8}" });
+    }
+    if (linkHrefs.some((h) => h.includes("bootstrap")) || document.querySelector("[class*='col-md-'], [class*='btn-primary']")) {
+      stack.push({ name: "Bootstrap CSS", category: "UI CSS Framework", icon: "\u{1F171}\uFE0F" });
+    }
+    if (scriptSrcs.some((s) => s.includes("google-analytics.com") || s.includes("googletagmanager.com/gtag"))) {
+      stack.push({ name: "Google Analytics", category: "User Analytics Engine", icon: "\u{1F4CA}" });
+    }
+    if (scriptSrcs.some((s) => s.includes("js.stripe.com"))) {
+      stack.push({ name: "Stripe Checkout", category: "Payment Gateway API", icon: "\u{1F4B3}" });
+    }
+    let stackHTML = `
+      <div style="font-size: 11px; color:var(--text-secondary); margin-bottom:14px;">Identified web technologies stack:</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+    `;
+    stack.forEach((tech) => {
+      stackHTML += `
+        <div class="audit-card audit-success">
+          <div class="audit-card-title">
+            <span>${tech.icon}</span>
+            <span>${tech.name}</span>
+          </div>
+          <div class="audit-card-desc">${tech.category}</div>
+        </div>
+      `;
+    });
+    if (stack.length === 0) {
+      stackHTML += `<div style="font-size:12px; color:var(--text-secondary); text-align:center; padding:20px;">No typical frontend framework signatures detected.</div>`;
+    }
+    stackHTML += `</div>`;
+    openDrawer("Site Stack", "Web Tech Stack Analyzer", stackHTML);
+  }
+
+  // src/features/seo-meta.js
+  function setupSeoMeta() {
+    const title = document.title || "No Title Tag Detected";
+    const desc = document.querySelector('meta[name="description"]')?.content || "No Meta Description Tag Found";
+    const canonical = document.querySelector('link[rel="canonical"]')?.href || window.location.href;
+    const robots = document.querySelector('meta[name="robots"]')?.content || "index, follow";
+    const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6"));
+    const h1Count = headings.filter((h) => h.tagName.toLowerCase() === "h1").length;
+    let hOutlineHTML = `<div style="max-height: 200px; overflow-y:auto; padding:6px; background:rgba(0,0,0,0.2); border-radius:6px; font-family:monospace; font-size:11px;">`;
+    headings.forEach((h) => {
+      const pad = (parseInt(h.tagName.charAt(1)) - 1) * 8;
+      hOutlineHTML += `
+        <div style="padding-left: ${pad}px; margin-bottom: 4px; border-left:1px solid rgba(255,255,255,0.05);">
+          <span style="color:var(--accent-purple); font-weight:700; margin-right:4px;">${h.tagName}</span>
+          <span style="color:var(--text-primary);">${h.innerText.trim() || "(empty)"}</span>
+        </div>
+      `;
+    });
+    hOutlineHTML += `</div>`;
+    const seoHTML = `
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:14px;">Webpage SEO diagnostics audit:</div>
+      
+      <!-- Title Card -->
+      <div class="audit-card ${title ? "audit-success" : "audit-warning"}">
+        <div class="audit-card-title">\u{1F4DD} Page Title (${title.length} chars)</div>
+        <div class="audit-card-desc" style="font-weight:600; color:var(--text-primary); margin-top:4px;">${title}</div>
+      </div>
+
+      <!-- Description Card -->
+      <div class="audit-card ${desc.startsWith("No") ? "audit-warning" : "audit-success"}">
+        <div class="audit-card-title">\u{1F3F7}\uFE0F Meta Description (${desc.length} chars)</div>
+        <div class="audit-card-desc" style="margin-top:4px;">${desc}</div>
+      </div>
+
+      <!-- Link visual mock preview -->
+      <div style="margin-bottom:16px;">
+        <span style="font-size:11px; color:var(--text-secondary);">Google Search Preview:</span>
+        <div class="seo-preview-box">
+          <div class="seo-preview-url">${canonical}</div>
+          <h3 class="seo-preview-title">${title}</h3>
+          <p class="seo-preview-desc">${desc.length > 150 ? desc.slice(0, 147) + "..." : desc}</p>
+        </div>
+      </div>
+
+      <!-- Headings Count Warnings -->
+      <div class="audit-card ${h1Count === 1 ? "audit-success" : "audit-warning"}">
+        <div class="audit-card-title">\u{1F4D0} Heading Hierarchy</div>
+        <div class="audit-card-desc" style="margin-top:4px;">
+          Detected <b>${h1Count}</b> H1 tag(s). ${h1Count === 0 ? "Warning: Page needs exactly one H1 tag!" : h1Count > 1 ? "Warning: Page has multiple H1 tags." : "Heading configuration is healthy."}
+        </div>
+        <div style="margin-top:8px;">Outline Tree:</div>
+        ${hOutlineHTML}
+      </div>
+    `;
+    openDrawer("SEO Meta", "SEO tags diagnostics", seoHTML);
+  }
+
+  // src/features/a11y-audit.js
+  function setupA11yAudit() {
+    const images = Array.from(document.getElementsByTagName("img"));
+    const missingAlt = images.filter((img) => !img.alt || img.alt.trim() === "");
+    const buttons = Array.from(document.querySelectorAll("button, a[role='button']"));
+    const missingAriaLabel = buttons.filter((btn) => !btn.innerText.trim() && !btn.getAttribute("aria-label"));
+    const inputs = Array.from(document.querySelectorAll("input:not([type='hidden']):not([type='submit'])"));
+    const missingLabels = inputs.filter((inp) => {
+      const hasParentLabel = inp.closest("label");
+      const hasIdLabel = inp.id ? document.querySelector(`label[for='${inp.id}']`) : false;
+      const hasAriaLabel = inp.getAttribute("aria-label") || inp.getAttribute("aria-labelledby");
+      return !hasParentLabel && !hasIdLabel && !hasAriaLabel;
+    });
+    const totalIssues = missingAlt.length + missingAriaLabel.length + missingLabels.length;
+    const a11yHTML = `
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:14px;">WCAG Accessibility audits:</div>
+      
+      <!-- Issue Tracker -->
+      <div class="audit-card ${totalIssues === 0 ? "audit-success" : "audit-warning"}">
+        <div class="audit-card-title">\u267F Audit Status</div>
+        <div class="audit-card-desc">
+          Found <b>${totalIssues}</b> accessibility warnings on this webpage.
+        </div>
+      </div>
+
+      <!-- Image Alt Audit -->
+      <div class="audit-card ${missingAlt.length === 0 ? "audit-success" : "audit-warning"}">
+        <div class="audit-card-title">\u{1F5BC}\uFE0F Missing Alt Attributes</div>
+        <div class="audit-card-desc">
+          Found <b>${missingAlt.length}</b> image(s) lacking an alt attribute. Alt attributes are critical for screen reader readers.
+        </div>
+        ${missingAlt.length > 0 ? `
+          <div style="margin-top:8px; font-size:10px; font-family:monospace; max-height:80px; overflow-y:auto; background:rgba(0,0,0,0.15); padding:6px; border-radius:4px;">
+            ${missingAlt.slice(0, 10).map((img, i) => `#${i + 1}: ${img.src.split("/").pop().split("?")[0] || "image"}`).join("<br>")}
+          </div>
+        ` : ""}
+      </div>
+
+      <!-- Button Label Audit -->
+      <div class="audit-card ${missingAriaLabel.length === 0 ? "audit-success" : "audit-warning"}">
+        <div class="audit-card-title">\u{1F39B}\uFE0F Descriptive Buttons</div>
+        <div class="audit-card-desc">
+          Found <b>${missingAriaLabel.length}</b> button(s) lacking text or aria-labels, making them unreadable by assistant tools.
+        </div>
+      </div>
+
+      <!-- Inputs Label Audit -->
+      <div class="audit-card ${missingLabels.length === 0 ? "audit-success" : "audit-warning"}">
+        <div class="audit-card-title">\u270D\uFE0F Unassociated Form Inputs</div>
+        <div class="audit-card-desc">
+          Found <b>${missingLabels.length}</b> input field(s) without matching label tags or ARIA labels.
+        </div>
+      </div>
+    `;
+    openDrawer("Accessibility", "WCAG accessibility checker", a11yHTML);
+  }
+
   // src/core/tool-manager.js
-  function activateTool(tool) {
-    deactivateCurrentTool();
-    ensureHUD();
-    state.activeTool = tool;
+  function activateTool2(tool) {
+    deactivateCurrentTool2();
+    ensureHUD2();
+    state2.activeTool = tool;
     updateSidebarActiveBtn();
-    closeDrawer2();
+    closeDrawer();
     switch (tool) {
       case "css-inspector":
         setupCSSInspector();
@@ -1562,42 +2891,149 @@
     }
     showToast(`Enabled: ${tool.replace(/-/g, " ").toUpperCase()}`);
   }
-  function deactivateCurrentTool() {
-    if (!state.activeTool) return;
+  function deactivateCurrentTool2() {
+    if (!state2.activeTool) return;
     cleanupListeners();
-    hideHighlight2();
-    closeDrawer2();
-    if (state.rulerCanvas) state.rulerCanvas.style.display = "none";
-    if (state.customStyleElement && state.customStyleElement.parentNode) {
-      state.customStyleElement.parentNode.removeChild(state.customStyleElement);
-      state.customStyleElement = null;
+    hideHighlight();
+    closeDrawer();
+    if (state2.rulerCanvas) state2.rulerCanvas.style.display = "none";
+    if (state2.customStyleElement && state2.customStyleElement.parentNode) {
+      state2.customStyleElement.parentNode.removeChild(state2.customStyleElement);
+      state2.customStyleElement = null;
     }
     if (document.body.contentEditable === "true") {
       document.body.contentEditable = "false";
     }
-    state.selectedElementForCss = null;
-    if (state.selectedElementForMove) {
-      state.selectedElementForMove.style.outline = "";
-      state.selectedElementForMove = null;
+    state2.selectedElementForCss = null;
+    if (state2.selectedElementForMove) {
+      state2.selectedElementForMove.style.outline = "";
+      state2.selectedElementForMove = null;
     }
-    showToast(`Disabled: ${state.activeTool.replace(/-/g, " ").toUpperCase()}`);
-    state.activeTool = null;
+    showToast(`Disabled: ${state2.activeTool.replace(/-/g, " ").toUpperCase()}`);
+    state2.activeTool = null;
     updateSidebarActiveBtn();
+  }
+  function trackListener(target, event, callback, useCapture = false) {
+    target.addEventListener(event, callback, useCapture);
+    state2.activeListeners.push({ target, event, callback, useCapture });
+  }
+  function cleanupListeners() {
+    state2.activeListeners.forEach(({ target, event, callback, useCapture }) => {
+      target.removeEventListener(event, callback, useCapture);
+    });
+    state2.activeListeners = [];
+  }
+  function openCommandPalette() {
+    const backdrop = document.createElement("div");
+    backdrop.className = "cmd-backdrop";
+    backdrop.innerHTML = `
+      <div class="cmd-box">
+        <input type="text" class="cmd-input" id="cmd-search-input" placeholder="Type a tool command (e.g. Ruler, Tech Stack, CSS)..." autofocus>
+        <div class="cmd-list" id="cmd-list-slot">
+          <!-- Command Items -->
+        </div>
+      </div>
+    `;
+    state2.shadowRoot.appendChild(backdrop);
+    const input = backdrop.querySelector("#cmd-search-input");
+    const listSlot = backdrop.querySelector("#cmd-list-slot");
+    const commands = [
+      { id: "css-inspector", label: "\u{1F50D} CSS Inspector", category: "Inspect" },
+      { id: "live-text-editor", label: "\u{1F4DD} Text Editor", category: "Inspect" },
+      { id: "fonts-changer", label: "\u{1F524} Font Changer (Pro)", category: "Design" },
+      { id: "list-fonts", label: "\u{1F4CB} List Fonts", category: "Design" },
+      { id: "color-picker", label: "\u{1F3A8} Color Picker", category: "Design" },
+      { id: "color-palette", label: "\u{1F308} Color Palette (Pro)", category: "Design" },
+      { id: "move-element", label: "\u{1F5B1}\uFE0F Move Element (Pro)", category: "Design" },
+      { id: "delete-element", label: "\u{1F5D1}\uFE0F Delete Element", category: "Inspect" },
+      { id: "export-element", label: "\u{1F4E4} Export Element (Pro)", category: "Capture" },
+      { id: "extract-images", label: "\u{1F5BC}\uFE0F Extract Images (Pro)", category: "Capture" },
+      { id: "page-ruler", label: "\u{1F4CF} Page Ruler (Pro)", category: "Diagnostics" },
+      { id: "page-outliner", label: "\u{1F532} Page Outliner", category: "Diagnostics" },
+      { id: "image-replacer", label: "\u{1F504} Image Swap (Pro)", category: "Design" },
+      { id: "take-screenshot", label: "\u{1F4F8} Screenshot (Pro)", category: "Capture" },
+      { id: "tech-stack", label: "\u{1F4BB} Tech Stack Detector", category: "Diagnostics" },
+      { id: "seo-meta", label: "\u{1F3F7}\uFE0F SEO Meta Inspector", category: "Diagnostics" },
+      { id: "a11y-audit", label: "\u267F Accessibility Audit", category: "Diagnostics" }
+    ];
+    let activeIndex = 0;
+    let filtered = [...commands];
+    function drawCommands() {
+      let html = "";
+      filtered.forEach((cmd, idx) => {
+        html += `
+          <div class="cmd-item ${idx === activeIndex ? "active" : ""}" data-id="${cmd.id}">
+            <span>${cmd.label}</span>
+            <span class="cmd-shortcut">${cmd.category}</span>
+          </div>
+        `;
+      });
+      listSlot.innerHTML = html || `<div style="padding:16px; text-align:center; font-size:12px; color:var(--text-secondary);">No commands matching query</div>`;
+    }
+    function triggerActiveCommand() {
+      const activeCmd = filtered[activeIndex];
+      if (activeCmd) {
+        state2.shadowRoot.removeChild(backdrop);
+        const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
+        if (premiumTools.includes(activeCmd.id) && !state2.isPremium) {
+          showPremiumLockedDrawer(activeCmd.id);
+          return;
+        }
+        activateTool2(activeCmd.id);
+      }
+    }
+    input.oninput = (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      filtered = commands.filter((cmd) => cmd.label.toLowerCase().includes(q) || cmd.category.toLowerCase().includes(q));
+      activeIndex = 0;
+      drawCommands();
+    };
+    input.onkeydown = (e) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeIndex = (activeIndex + 1) % filtered.length;
+        drawCommands();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIndex = (activeIndex - 1 + filtered.length) % filtered.length;
+        drawCommands();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        triggerActiveCommand();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        state2.shadowRoot.removeChild(backdrop);
+      }
+    };
+    listSlot.onclick = (e) => {
+      const item = e.target.closest(".cmd-item");
+      if (item) {
+        const id = item.getAttribute("data-id");
+        activeIndex = filtered.findIndex((cmd) => cmd.id === id);
+        triggerActiveCommand();
+      }
+    };
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) {
+        state2.shadowRoot.removeChild(backdrop);
+      }
+    };
+    drawCommands();
   }
 
   // src/ui/hud.js
   function ensureHUD2() {
-    if (state.hostEl) return;
-    state.hostEl = document.createElement("div");
-    state.hostEl.id = "super-webdev-hud-host";
-    state.hostEl.style.position = "fixed";
-    state.hostEl.style.top = "0";
-    state.hostEl.style.left = "0";
-    state.hostEl.style.width = "0";
-    state.hostEl.style.height = "0";
-    state.hostEl.style.zIndex = "2147483647";
-    document.body.appendChild(state.hostEl);
-    state.shadowRoot = state.hostEl.attachShadow({ mode: "open" });
+    if (state2.hostEl) return;
+    state2.hostEl = document.createElement("div");
+    state2.hostEl.id = "super-webdev-hud-host";
+    state2.hostEl.style.position = "fixed";
+    state2.hostEl.style.top = "0";
+    state2.hostEl.style.left = "0";
+    state2.hostEl.style.width = "0";
+    state2.hostEl.style.height = "0";
+    state2.hostEl.style.zIndex = "2147483647";
+    document.body.appendChild(state2.hostEl);
+    state2.shadowRoot = state2.hostEl.attachShadow({ mode: "open" });
     const svgFilters = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgFilters.style.display = "none";
     svgFilters.innerHTML = `
@@ -1617,7 +3053,7 @@
         </filter>
       </defs>
     `;
-    state.shadowRoot.appendChild(svgFilters);
+    state2.shadowRoot.appendChild(svgFilters);
     const style = document.createElement("style");
     style.textContent = `
       :host {
@@ -3101,15 +4537,15 @@
         overflow: hidden;
       }
     `;
-    state.shadowRoot.appendChild(style);
-    state.reopenTabEl = document.createElement("div");
-    state.reopenTabEl.className = "reopen-tab reopen-tab-right";
-    state.reopenTabEl.style.display = "none";
-    state.reopenTabEl.innerHTML = `<span>\u25C0</span>`;
-    state.shadowRoot.appendChild(state.reopenTabEl);
-    state.sidebarEl = document.createElement("div");
-    state.sidebarEl.className = "sidebar-panel sidebar-right";
-    state.sidebarEl.innerHTML = `
+    state2.shadowRoot.appendChild(style);
+    state2.reopenTabEl = document.createElement("div");
+    state2.reopenTabEl.className = "reopen-tab reopen-tab-right";
+    state2.reopenTabEl.style.display = "none";
+    state2.reopenTabEl.innerHTML = `<span>\u25C0</span>`;
+    state2.shadowRoot.appendChild(state2.reopenTabEl);
+    state2.sidebarEl = document.createElement("div");
+    state2.sidebarEl.className = "sidebar-panel sidebar-right";
+    state2.sidebarEl.innerHTML = `
       <!-- Top header branding -->
       <button class="sidebar-btn" id="sbtn-dashboard" title="SuperDev Pro">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -3221,10 +4657,10 @@
         <div class="sidebar-tip">Hide Sidebar (Cmd+Shift+E)</div>
       </button>
     `;
-    state.shadowRoot.appendChild(state.sidebarEl);
-    state.drawerEl = document.createElement("div");
-    state.drawerEl.className = "drawer-panel drawer-panel-right";
-    state.drawerEl.innerHTML = `
+    state2.shadowRoot.appendChild(state2.sidebarEl);
+    state2.drawerEl = document.createElement("div");
+    state2.drawerEl.className = "drawer-panel drawer-panel-right";
+    state2.drawerEl.innerHTML = `
       <div class="drawer-header">
         <div>
           <h3 class="drawer-title" id="drawer-title-slot">Tool Details</h3>
@@ -3236,55 +4672,186 @@
         <!-- Render content dynamic templates -->
       </div>
     `;
-    state.shadowRoot.appendChild(state.drawerEl);
-    state.highlightOverlay = document.createElement("div");
-    state.highlightOverlay.className = "highlight-overlay";
+    state2.shadowRoot.appendChild(state2.drawerEl);
+    state2.highlightOverlay = document.createElement("div");
+    state2.highlightOverlay.className = "highlight-overlay";
     ["vl", "vr", "ht", "hb"].forEach((g) => {
       const guide = document.createElement("div");
       guide.className = `highlight-guide-${g}`;
-      state.highlightOverlay.appendChild(guide);
+      state2.highlightOverlay.appendChild(guide);
     });
-    state.shadowRoot.appendChild(state.highlightOverlay);
-    state.highlightLabel = document.createElement("div");
-    state.highlightLabel.className = "highlight-label";
-    state.shadowRoot.appendChild(state.highlightLabel);
-    state.inspectorTooltip = document.createElement("div");
-    state.inspectorTooltip.className = "inspector-tooltip-card";
-    state.shadowRoot.appendChild(state.inspectorTooltip);
-    state.rulerCanvas = document.createElement("canvas");
-    state.rulerCanvas.className = "ruler-canvas";
-    state.shadowRoot.appendChild(state.rulerCanvas);
-    state.toastEl = document.createElement("div");
-    state.toastEl.className = "hud-toast";
-    state.toastEl.innerHTML = `<span>\u2714\uFE0F</span> <span id="toast-text-slot">Action Completed</span>`;
-    state.shadowRoot.appendChild(state.toastEl);
+    state2.shadowRoot.appendChild(state2.highlightOverlay);
+    state2.highlightLabel = document.createElement("div");
+    state2.highlightLabel.className = "highlight-label";
+    state2.shadowRoot.appendChild(state2.highlightLabel);
+    state2.inspectorTooltip = document.createElement("div");
+    state2.inspectorTooltip.className = "inspector-tooltip-card";
+    state2.shadowRoot.appendChild(state2.inspectorTooltip);
+    state2.rulerCanvas = document.createElement("canvas");
+    state2.rulerCanvas.className = "ruler-canvas";
+    state2.shadowRoot.appendChild(state2.rulerCanvas);
+    state2.toastEl = document.createElement("div");
+    state2.toastEl.className = "hud-toast";
+    state2.toastEl.innerHTML = `<span>\u2714\uFE0F</span> <span id="toast-text-slot">Action Completed</span>`;
+    state2.shadowRoot.appendChild(state2.toastEl);
     setupSidebarEvents();
     loadPersistentSettings();
+  }
+  function loadPersistentSettings() {
+    chrome.storage.local.get(["sidebarPosition", "premium"], (res) => {
+      state2.isPremium = res.premium !== false;
+      if (res.sidebarPosition === "left") {
+        setSidebarPosition("left");
+      } else {
+        setSidebarPosition("right");
+      }
+    });
+  }
+  function applyDrawerPositionClass(pos) {
+    if (!state2.drawerEl) return;
+    if (pos === "left") {
+      state2.drawerEl.classList.add("drawer-panel-left");
+      state2.drawerEl.classList.remove("drawer-panel-right");
+    } else {
+      state2.drawerEl.classList.add("drawer-panel-right");
+      state2.drawerEl.classList.remove("drawer-panel-left");
+    }
+  }
+  function setSidebarPosition(pos) {
+    state2.sidebarPosition = pos;
+    chrome.storage.local.set({ sidebarPosition: pos });
+    if (pos === "left") {
+      state2.sidebarEl.classList.add("sidebar-left");
+      state2.sidebarEl.classList.remove("sidebar-right");
+      state2.reopenTabEl.className = "reopen-tab reopen-tab-left";
+      state2.reopenTabEl.innerHTML = `<span>\u25B6</span>`;
+    } else {
+      state2.sidebarEl.classList.add("sidebar-right");
+      state2.sidebarEl.classList.remove("sidebar-left");
+      state2.reopenTabEl.className = "reopen-tab reopen-tab-right";
+      state2.reopenTabEl.innerHTML = `<span>\u25C0</span>`;
+    }
+    applyDrawerPositionClass(pos);
+    closeDrawer();
+  }
+  function toggleSidebarVisibility2() {
+    ensureHUD2();
+    setSidebarVisible2(!state2.sidebarVisible);
+  }
+  function setSidebarVisible2(visible) {
+    state2.sidebarVisible = visible;
+    if (visible) {
+      state2.sidebarEl.classList.remove("sidebar-hidden");
+      state2.reopenTabEl.style.display = "none";
+    } else {
+      state2.sidebarEl.classList.add("sidebar-hidden");
+      state2.reopenTabEl.style.display = "flex";
+      closeDrawer();
+    }
+  }
+  function setupSidebarEvents() {
+    state2.reopenTabEl.addEventListener("click", () => {
+      setSidebarVisible2(true);
+    });
+    state2.shadowRoot.getElementById("sbtn-collapse").addEventListener("click", () => {
+      setSidebarVisible2(false);
+    });
+    state2.shadowRoot.getElementById("sbtn-settings-position").addEventListener("click", () => {
+      const targetPos = state2.sidebarPosition === "right" ? "left" : "right";
+      setSidebarPosition(targetPos);
+      showToast(`Docked position: ${targetPos.toUpperCase()}`);
+    });
+    state2.shadowRoot.getElementById("drawer-close-btn").addEventListener("click", () => {
+      closeDrawer();
+    });
+    state2.shadowRoot.getElementById("sbtn-dashboard").addEventListener("click", () => {
+      openDashboardDrawer();
+    });
+    state2.shadowRoot.getElementById("sbtn-cmd-palette").addEventListener("click", () => {
+      openCommandPalette();
+    });
+    const tools = [
+      { id: "css-inspector", btnId: "sbtn-css-inspector" },
+      { id: "live-text-editor", btnId: "sbtn-live-text-editor" },
+      { id: "fonts-changer", btnId: "sbtn-fonts-changer" },
+      { id: "list-fonts", btnId: "sbtn-list-fonts" },
+      { id: "color-picker", btnId: "sbtn-color-picker" },
+      { id: "color-palette", btnId: "sbtn-color-palette" },
+      { id: "move-element", btnId: "sbtn-move-element" },
+      { id: "delete-element", btnId: "sbtn-delete-element" },
+      { id: "export-element", btnId: "sbtn-export-element" },
+      { id: "extract-images", btnId: "sbtn-extract-images" },
+      { id: "page-ruler", btnId: "sbtn-page-ruler" },
+      { id: "page-outliner", btnId: "sbtn-page-outliner" },
+      { id: "image-replacer", btnId: "sbtn-image-replacer" },
+      { id: "take-screenshot", btnId: "sbtn-take-screenshot" },
+      { id: "responsive-viewer", btnId: "sbtn-responsive-viewer" },
+      // New diagnostic tabs
+      { id: "tech-stack", btnId: "sbtn-tech-stack" },
+      { id: "seo-meta", btnId: "sbtn-seo-meta" },
+      { id: "a11y-audit", btnId: "sbtn-a11y-audit" },
+      { id: "settings", btnId: "sbtn-settings-drawer" }
+    ];
+    tools.forEach((tool) => {
+      state2.shadowRoot.getElementById(tool.btnId).addEventListener("click", () => {
+        const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
+        if (premiumTools.includes(tool.id) && !state2.isPremium) {
+          showPremiumLockedDrawer(tool.id);
+          return;
+        }
+        if (state2.activeTool === tool.id) {
+          deactivateCurrentTool2();
+        } else {
+          activateTool2(tool.id);
+        }
+      });
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      toggleSidebarVisibility2();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+      e.preventDefault();
+      ensureHUD2();
+      openCommandPalette();
+    }
+  });
+  function updateSidebarActiveBtn() {
+    if (!state2.sidebarEl) return;
+    state2.sidebarEl.querySelectorAll(".sidebar-btn").forEach((btn) => {
+      btn.classList.remove("active-tool");
+    });
+    if (state2.activeTool) {
+      const activeBtn = state2.shadowRoot.getElementById(`sbtn-${state2.activeTool}`);
+      if (activeBtn) activeBtn.classList.add("active-tool");
+    }
   }
 
   // src/content.js
   ensureHUD2();
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "toggle-sidebar") {
-      if (state.sidebarEl) {
-        if (state.isSidebarOpen) {
-          state.sidebarEl.style.transform = "translateX(-120%)";
-          state.sidebarEl.style.opacity = "0";
-          state.isSidebarOpen = false;
-          deactivateCurrentTool();
+      if (state2.sidebarEl) {
+        if (state2.isSidebarOpen) {
+          state2.sidebarEl.style.transform = "translateX(-120%)";
+          state2.sidebarEl.style.opacity = "0";
+          state2.isSidebarOpen = false;
+          deactivateCurrentTool2();
         } else {
-          state.sidebarEl.style.transform = "translateX(0)";
-          state.sidebarEl.style.opacity = "1";
-          state.isSidebarOpen = true;
+          state2.sidebarEl.style.transform = "translateX(0)";
+          state2.sidebarEl.style.opacity = "1";
+          state2.isSidebarOpen = true;
         }
       }
     } else if (req.action === "activate-tool") {
-      if (!state.isSidebarOpen && state.sidebarEl) {
-        state.sidebarEl.style.transform = "translateX(0)";
-        state.sidebarEl.style.opacity = "1";
-        state.isSidebarOpen = true;
+      if (!state2.isSidebarOpen && state2.sidebarEl) {
+        state2.sidebarEl.style.transform = "translateX(0)";
+        state2.sidebarEl.style.opacity = "1";
+        state2.isSidebarOpen = true;
       }
-      activateTool(req.tool);
+      activateTool2(req.tool);
     }
     sendResponse({ status: "ok" });
   });
