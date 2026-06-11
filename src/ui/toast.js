@@ -1,4 +1,5 @@
 import { state } from '../state.js';
+import { ensureHUD } from './hud.js';
 
 export   function showToast(msg) {
     ensureHUD();

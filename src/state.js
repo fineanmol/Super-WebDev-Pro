@@ -15,7 +15,7 @@ export const state = {
   activeInspectorTab: "all",
 
   // Responsive Viewer
-  activeIFrames: [],
+  activeListeners: [], activeIFrames: [],
   deviceList: [],
 
   // Ruler

@@ -1,3 +1,5 @@
+import { state } from './state.js';
+import { ensureHUD } from './ui/hud.js';
 export   function formatElementSelector(el) {
     if (!el) return "";
     const tagName = el.tagName.toLowerCase();

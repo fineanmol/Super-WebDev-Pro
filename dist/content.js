@@ -1,6 +1,6 @@
 (() => {
   // src/state.js
-  var state2 = {
+  var state = {
     isSidebarOpen: false,
     activeTool: null,
     // "css-inspector", "live-text-editor", etc.
@@ -16,6 +16,7 @@
     selectedElementForCss: null,
     activeInspectorTab: "all",
     // Responsive Viewer
+    activeListeners: [],
     activeIFrames: [],
     deviceList: [],
     // Ruler
@@ -113,51 +114,51 @@
 
   // src/ui/highlight.js
   function showHighlight(rect, labelText, customColor = null) {
-    ensureHUD2();
-    state2.highlightOverlay.style.top = `${rect.top}px`;
-    state2.highlightOverlay.style.left = `${rect.left}px`;
-    state2.highlightOverlay.style.width = `${rect.width}px`;
-    state2.highlightOverlay.style.height = `${rect.height}px`;
-    state2.highlightOverlay.style.display = "block";
+    ensureHUD();
+    state.highlightOverlay.style.top = `${rect.top}px`;
+    state.highlightOverlay.style.left = `${rect.left}px`;
+    state.highlightOverlay.style.width = `${rect.width}px`;
+    state.highlightOverlay.style.height = `${rect.height}px`;
+    state.highlightOverlay.style.display = "block";
     if (customColor) {
-      state2.highlightOverlay.style.borderColor = customColor;
-      state2.highlightOverlay.style.backgroundColor = `${customColor}0e`;
-      state2.highlightLabel.style.backgroundColor = customColor;
+      state.highlightOverlay.style.borderColor = customColor;
+      state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+      state.highlightLabel.style.backgroundColor = customColor;
     } else {
-      const defaultBorder = state2.activeTool === "css-inspector" ? "#4ade80" : "var(--accent-purple)";
-      const defaultBg = state2.activeTool === "css-inspector" ? "rgba(74, 222, 128, 0.05)" : "rgba(184, 163, 252, 0.08)";
-      state2.highlightOverlay.style.borderColor = defaultBorder;
-      state2.highlightOverlay.style.backgroundColor = defaultBg;
-      state2.highlightLabel.style.backgroundColor = "var(--accent-purple)";
+      const defaultBorder = state.activeTool === "css-inspector" ? "#4ade80" : "var(--accent-purple)";
+      const defaultBg = state.activeTool === "css-inspector" ? "rgba(74, 222, 128, 0.05)" : "rgba(184, 163, 252, 0.08)";
+      state.highlightOverlay.style.borderColor = defaultBorder;
+      state.highlightOverlay.style.backgroundColor = defaultBg;
+      state.highlightLabel.style.backgroundColor = "var(--accent-purple)";
     }
-    if (state2.activeTool === "css-inspector") {
-      state2.highlightOverlay.classList.add("show-guides");
-      state2.highlightLabel.style.display = "none";
+    if (state.activeTool === "css-inspector") {
+      state.highlightOverlay.classList.add("show-guides");
+      state.highlightLabel.style.display = "none";
     } else {
-      state2.highlightOverlay.classList.remove("show-guides");
-      state2.highlightLabel.textContent = labelText;
-      state2.highlightLabel.style.top = `${Math.max(rect.top - 20, 2)}px`;
-      state2.highlightLabel.style.left = `${rect.left}px`;
-      state2.highlightLabel.style.display = "block";
+      state.highlightOverlay.classList.remove("show-guides");
+      state.highlightLabel.textContent = labelText;
+      state.highlightLabel.style.top = `${Math.max(rect.top - 20, 2)}px`;
+      state.highlightLabel.style.left = `${rect.left}px`;
+      state.highlightLabel.style.display = "block";
     }
   }
   function isHUDElement(el) {
     if (!el) return false;
-    if (el === state2.hostEl || state2.hostEl.contains(el)) return true;
+    if (el === state.hostEl || state.hostEl.contains(el)) return true;
     return false;
   }
   function hideHighlight() {
-    if (state2.highlightOverlay) {
-      state2.highlightOverlay.style.display = "none";
-      state2.highlightOverlay.classList.remove("show-guides");
-      state2.highlightLabel.style.display = "none";
+    if (state.highlightOverlay) {
+      state.highlightOverlay.style.display = "none";
+      state.highlightOverlay.classList.remove("show-guides");
+      state.highlightLabel.style.display = "none";
     }
-    if (state2.inspectorTooltip) {
-      state2.inspectorTooltip.style.display = "none";
+    if (state.inspectorTooltip) {
+      state.inspectorTooltip.style.display = "none";
     }
   }
   function updateInspectorTooltip(element, clientX, clientY) {
-    if (!state2.inspectorTooltip) return;
+    if (!state.inspectorTooltip) return;
     const computed = window.getComputedStyle(element);
     const parentSel = element.parentElement ? formatElementSelector(element.parentElement) : "";
     const activeSel = formatElementSelector(element);
@@ -254,7 +255,7 @@
         </div>
       `;
     });
-    state2.inspectorTooltip.innerHTML = `
+    state.inspectorTooltip.innerHTML = `
       <div class="tooltip-hierarchy">${hierarchyHTML}</div>
       <div class="tooltip-meta">
         <div class="tooltip-tag">${tagName}</div>
@@ -264,9 +265,9 @@
       <div class="tooltip-css-block">${cssHTML}</div>
       <div class="tooltip-footer">Click to lock \xB7 \u2191\u2193 navigate \xB7 Esc to exit</div>
     `;
-    state2.inspectorTooltip.style.display = "block";
+    state.inspectorTooltip.style.display = "block";
     const tooltipWidth = 290;
-    const tooltipHeight = state2.inspectorTooltip.offsetHeight || 280;
+    const tooltipHeight = state.inspectorTooltip.offsetHeight || 280;
     const marginOffset = 15;
     let x = clientX + marginOffset;
     let y = clientY + marginOffset;
@@ -278,34 +279,34 @@
     }
     x = Math.max(5, x);
     y = Math.max(5, y);
-    state2.inspectorTooltip.style.left = `${x}px`;
-    state2.inspectorTooltip.style.top = `${y}px`;
+    state.inspectorTooltip.style.left = `${x}px`;
+    state.inspectorTooltip.style.top = `${y}px`;
   }
 
   // src/ui/drawer.js
   function openDrawer(title, subtitle, contentHTML, onRender = null) {
-    ensureHUD2();
-    state2.shadowRoot.getElementById("drawer-title-slot").textContent = title;
-    state2.shadowRoot.getElementById("drawer-sub-slot").textContent = subtitle;
-    const slot = state2.shadowRoot.getElementById("drawer-content-slot");
+    ensureHUD();
+    state.shadowRoot.getElementById("drawer-title-slot").textContent = title;
+    state.shadowRoot.getElementById("drawer-sub-slot").textContent = subtitle;
+    const slot = state.shadowRoot.getElementById("drawer-content-slot");
     slot.innerHTML = contentHTML;
-    state2.drawerEl.classList.add("visible");
+    state.drawerEl.classList.add("visible");
     if (onRender) onRender(slot);
   }
   function closeDrawer() {
-    if (state2.drawerEl) {
-      state2.drawerEl.classList.remove("visible");
+    if (state.drawerEl) {
+      state.drawerEl.classList.remove("visible");
     }
   }
 
   // src/ui/toast.js
   function showToast(msg) {
     ensureHUD();
-    const txt = state2.shadowRoot.getElementById("toast-text-slot");
+    const txt = state.shadowRoot.getElementById("toast-text-slot");
     txt.textContent = msg;
-    state2.toastEl.classList.add("visible");
+    state.toastEl.classList.add("visible");
     setTimeout(() => {
-      state2.toastEl.classList.remove("visible");
+      state.toastEl.classList.remove("visible");
     }, 2500);
   }
 
@@ -323,7 +324,7 @@
       <div id="inspector-element-details" style="display: none; margin-top: 14px;"></div>
     `;
     openDrawer("CSS Inspector", "Computed values & Live CSS overrides", guideHTML);
-    const drawerHeader = state2.drawerEl.querySelector(".drawer-header");
+    const drawerHeader = state.drawerEl.querySelector(".drawer-header");
     drawerHeader.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -345,8 +346,8 @@
     }, true);
     trackListener(document, "mousemove", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) {
-        if (state2.inspectorTooltip) {
-          state2.inspectorTooltip.style.display = "none";
+        if (state.inspectorTooltip) {
+          state.inspectorTooltip.style.display = "none";
         }
         return;
       }
@@ -356,22 +357,22 @@
     }, true);
     trackListener(document, "mouseout", (e) => {
       if (isHUDElement(e.target)) return;
-      if (state2.selectedElementForCss) {
-        const rect = state2.selectedElementForCss.getBoundingClientRect();
+      if (state.selectedElementForCss) {
+        const rect = state.selectedElementForCss.getBoundingClientRect();
         showHighlight(rect, "");
       } else {
         hideHighlight();
       }
-      if (state2.inspectorTooltip) {
-        state2.inspectorTooltip.style.display = "none";
+      if (state.inspectorTooltip) {
+        state.inspectorTooltip.style.display = "none";
       }
     }, true);
     trackListener(document, "click", (e) => {
       if (isHUDElement(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      state2.selectedElementForCss = e.target;
-      const existingSlot = state2.shadowRoot.getElementById("inspector-element-details");
+      state.selectedElementForCss = e.target;
+      const existingSlot = state.shadowRoot.getElementById("inspector-element-details");
       if (!existingSlot) {
         const guideHTML2 = `
           <div class="audit-card">
@@ -386,8 +387,8 @@
         `;
         openDrawer("CSS Inspector", "Computed values & Live CSS overrides", guideHTML2);
       } else {
-        if (state2.drawerEl && !state2.drawerEl.classList.contains("visible")) {
-          state2.drawerEl.classList.add("visible");
+        if (state.drawerEl && !state.drawerEl.classList.contains("visible")) {
+          state.drawerEl.classList.add("visible");
         }
       }
       renderCSSDetailsInDrawer();
@@ -395,38 +396,38 @@
       showHighlight(rect, "");
     }, true);
     trackListener(document, "keydown", (e) => {
-      if (state2.activeTool !== "css-inspector" || !state2.selectedElementForCss) return;
-      let target = state2.selectedElementForCss;
+      if (state.activeTool !== "css-inspector" || !state.selectedElementForCss) return;
+      let target = state.selectedElementForCss;
       let nextEl = null;
       if (e.key === "ArrowUp") {
         nextEl = target.parentElement;
         if (nextEl && nextEl !== document.body && nextEl !== document.documentElement && !isHUDElement(nextEl)) {
           e.preventDefault();
-          state2.selectedElementForCss = nextEl;
+          state.selectedElementForCss = nextEl;
           renderCSSDetailsInDrawer();
           const rect = nextEl.getBoundingClientRect();
           showHighlight(rect, "");
-          if (state2.inspectorTooltip) {
-            state2.inspectorTooltip.style.display = "none";
+          if (state.inspectorTooltip) {
+            state.inspectorTooltip.style.display = "none";
           }
         }
       } else if (e.key === "ArrowDown") {
         nextEl = target.firstElementChild;
         if (nextEl && !isHUDElement(nextEl)) {
           e.preventDefault();
-          state2.selectedElementForCss = nextEl;
+          state.selectedElementForCss = nextEl;
           renderCSSDetailsInDrawer();
           const rect = nextEl.getBoundingClientRect();
           showHighlight(rect, "");
-          if (state2.inspectorTooltip) {
-            state2.inspectorTooltip.style.display = "none";
+          if (state.inspectorTooltip) {
+            state.inspectorTooltip.style.display = "none";
           }
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
-        state2.selectedElementForCss = null;
+        state.selectedElementForCss = null;
         hideHighlight();
-        const detailsSlot = state2.shadowRoot.getElementById("inspector-element-details");
+        const detailsSlot = state.shadowRoot.getElementById("inspector-element-details");
         if (detailsSlot) detailsSlot.style.display = "none";
       }
     });
@@ -450,9 +451,9 @@
     return { value: isNaN(valOnly) ? 0 : valOnly, unit: "px" };
   }
   function renderCSSDetailsInDrawer() {
-    const el = state2.selectedElementForCss;
-    if (!el || !state2.drawerEl) return;
-    let detailsSlot = state2.shadowRoot.getElementById("inspector-element-details");
+    const el = state.selectedElementForCss;
+    if (!el || !state.drawerEl) return;
+    let detailsSlot = state.shadowRoot.getElementById("inspector-element-details");
     if (!detailsSlot) {
       const guideHTML = `
         <div class="audit-card">
@@ -466,29 +467,29 @@
         <div id="inspector-element-details" style="display: none; margin-top: 14px;"></div>
       `;
       openDrawer("CSS Inspector", "Computed values & Live CSS overrides", guideHTML);
-      detailsSlot = state2.shadowRoot.getElementById("inspector-element-details");
+      detailsSlot = state.shadowRoot.getElementById("inspector-element-details");
       if (!detailsSlot) return;
     }
-    if (state2.drawerEl && !state2.drawerEl.classList.contains("visible")) {
-      state2.drawerEl.classList.add("visible");
+    if (state.drawerEl && !state.drawerEl.classList.contains("visible")) {
+      state.drawerEl.classList.add("visible");
     }
     detailsSlot.style.display = "block";
-    state2.activeInspectorTab = state2.activeInspectorTab || "all";
-    if (!state2.disabledStyles) state2.disabledStyles = /* @__PURE__ */ new WeakMap();
-    if (!state2.disabledStyleValues) state2.disabledStyleValues = /* @__PURE__ */ new WeakMap();
-    if (!state2.originalStyles) state2.originalStyles = /* @__PURE__ */ new WeakMap();
-    if (!state2.originalStyles.has(el)) {
-      state2.originalStyles.set(el, el.getAttribute("style") || "");
+    state.activeInspectorTab = state.activeInspectorTab || "all";
+    if (!state.disabledStyles) state.disabledStyles = /* @__PURE__ */ new WeakMap();
+    if (!state.disabledStyleValues) state.disabledStyleValues = /* @__PURE__ */ new WeakMap();
+    if (!state.originalStyles) state.originalStyles = /* @__PURE__ */ new WeakMap();
+    if (!state.originalStyles.has(el)) {
+      state.originalStyles.set(el, el.getAttribute("style") || "");
     }
-    let disabledSet = state2.disabledStyles.get(el);
+    let disabledSet = state.disabledStyles.get(el);
     if (!disabledSet) {
       disabledSet = /* @__PURE__ */ new Set();
-      state2.disabledStyles.set(el, disabledSet);
+      state.disabledStyles.set(el, disabledSet);
     }
-    let valuesMap = state2.disabledStyleValues.get(el);
+    let valuesMap = state.disabledStyleValues.get(el);
     if (!valuesMap) {
       valuesMap = {};
-      state2.disabledStyleValues.set(el, valuesMap);
+      state.disabledStyleValues.set(el, valuesMap);
     }
     const computed = window.getComputedStyle(el);
     const tagName = el.tagName.toLowerCase();
@@ -525,28 +526,28 @@
 
         <!-- 9 Tabs filter -->
         <div class="inspector-filter-tabs" style="display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:12px;">
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "all" ? "active" : ""}" data-tab="all" title="All properties" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "all" ? "var(--accent-purple)" : "rgba(255,255,255,0.05)"}; color:#fff; cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "all" ? "active" : ""}" data-tab="all" title="All properties" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "all" ? "var(--accent-purple)" : "rgba(255,255,255,0.05)"}; color:#fff; cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
           </button>
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "web-layout" ? "active" : ""}" data-tab="web-layout" title="Web Layout" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "web-layout" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "web-layout" ? "active" : ""}" data-tab="web-layout" title="Web Layout" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "web-layout" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
           </button>
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "typography" ? "active" : ""}" data-tab="typography" title="Typography" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "typography" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "typography" ? "active" : ""}" data-tab="typography" title="Typography" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "typography" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
             <span style="font-family:serif; font-size:12px; font-weight:bold; line-height:14px;">Aa</span>
           </button>
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "color" ? "active" : ""}" data-tab="color" title="Colors" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "color" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "color" ? "active" : ""}" data-tab="color" title="Colors" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "color" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           </button>
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "effects" ? "active" : ""}" data-tab="effects" title="Effects" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "effects" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "effects" ? "active" : ""}" data-tab="effects" title="Effects" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "effects" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.18 4.18l15.64 15.64M4.18 19.82l15.64-15.64"></path></svg>
           </button>
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "background" ? "active" : ""}" data-tab="background" title="Background" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "background" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "background" ? "active" : ""}" data-tab="background" title="Background" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "background" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           </button>
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "grid" ? "active" : ""}" data-tab="grid" title="Grid" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "grid" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "grid" ? "active" : ""}" data-tab="grid" title="Grid" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "grid" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           </button>
-          <button class="inspector-filter-btn ${state2.activeInspectorTab === "code" ? "active" : ""}" data-tab="code" title="Code Mode" style="padding:6px; border-radius:6px; border:none; background:${state2.activeInspectorTab === "code" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
+          <button class="inspector-filter-btn ${state.activeInspectorTab === "code" ? "active" : ""}" data-tab="code" title="Code Mode" style="padding:6px; border-radius:6px; border:none; background:${state.activeInspectorTab === "code" ? "var(--accent-purple)" : "none"}; color:var(--text-secondary); cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
           </button>
         </div>
@@ -584,8 +585,8 @@
       showToast("Selector copied!");
     };
     const resetStyles = () => {
-      el.setAttribute("style", state2.originalStyles.get(el));
-      state2.disabledStyles.set(el, /* @__PURE__ */ new Set());
+      el.setAttribute("style", state.originalStyles.get(el));
+      state.disabledStyles.set(el, /* @__PURE__ */ new Set());
       showToast("Element styles reset!");
       renderCSSDetailsInDrawer();
       const newRect = el.getBoundingClientRect();
@@ -603,7 +604,7 @@
       btn.onclick = () => {
         tabBtns.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-        state2.activeInspectorTab = btn.getAttribute("data-tab");
+        state.activeInspectorTab = btn.getAttribute("data-tab");
         renderPropertiesList();
       };
     });
@@ -655,7 +656,7 @@
       const listSlot = detailsSlot.querySelector("#inspector-props-list-slot");
       const cssPane = detailsSlot.querySelector("#inspector-css-pane-slot");
       const addBtn = detailsSlot.querySelector("#inspector-add-prop-btn");
-      const activeTab = state2.activeInspectorTab;
+      const activeTab = state.activeInspectorTab;
       if (activeTab === "code") {
         listSlot.style.display = "none";
         addBtn.style.display = "none";
@@ -837,8 +838,8 @@
       const selector = `${tagName}${classes}`;
       const propNames = PROPERTIES_BY_TAB.all;
       let lines = [];
-      const disabledSet2 = state2.disabledStyles.get(el) || /* @__PURE__ */ new Set();
-      const valuesMap2 = state2.disabledStyleValues.get(el) || {};
+      const disabledSet2 = state.disabledStyles.get(el) || /* @__PURE__ */ new Set();
+      const valuesMap2 = state.disabledStyleValues.get(el) || {};
       propNames.forEach((propName) => {
         if (disabledSet2.has(propName)) {
           const cachedVal = valuesMap2[propName] || computed.getPropertyValue(propName) || computed[propName] || "";
@@ -868,7 +869,7 @@ ${lines.join("\n")}
   function setupLiveTextEditor() {
     document.body.contentEditable = "true";
     function drawTextEditorDrawer() {
-      const logsHTML = state2.undoStacks.textEdits.map((edit, i) => `
+      const logsHTML = state.undoStacks.textEdits.map((edit, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${edit.element.tagName.toLowerCase()}&gt; modified</span>
           <button class="hud-btn te-single-restore" data-idx="${i}" style="padding:2px 6px; font-size:9px;">Undo</button>
@@ -882,10 +883,10 @@ ${lines.join("\n")}
           <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 10px 0;">
             Click on any heading, paragraph, or text on the page to change it live.
           </p>
-          <button id="te-reset-all-btn" class="hud-btn danger" style="width:100%; justify-content:center;" ${state2.undoStacks.textEdits.length === 0 ? "disabled" : ""}>Reset Webpage Text</button>
+          <button id="te-reset-all-btn" class="hud-btn danger" style="width:100%; justify-content:center;" ${state.undoStacks.textEdits.length === 0 ? "disabled" : ""}>Reset Webpage Text</button>
         </div>
         <div style="margin-top: 16px;">
-          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Edits History (${state2.undoStacks.textEdits.length}):</span>
+          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Edits History (${state.undoStacks.textEdits.length}):</span>
           <div class="custom-scroll" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto;">
             ${logsHTML || `<div style="font-size:10px; color:var(--text-secondary); text-align:center; padding:10px;">No edits logged.</div>`}
           </div>
@@ -893,8 +894,8 @@ ${lines.join("\n")}
       `;
       openDrawer("Text Editor", "Modify webpage text content", contentHTML, (slot) => {
         slot.querySelector("#te-reset-all-btn").onclick = () => {
-          while (state2.undoStacks.textEdits.length > 0) {
-            const edit = state2.undoStacks.textEdits.pop();
+          while (state.undoStacks.textEdits.length > 0) {
+            const edit = state.undoStacks.textEdits.pop();
             edit.element.innerHTML = edit.oldHTML;
           }
           showToast("Webpage text reset completed!");
@@ -903,10 +904,10 @@ ${lines.join("\n")}
         slot.querySelectorAll(".te-single-restore").forEach((btn) => {
           btn.onclick = () => {
             const idx = parseInt(btn.getAttribute("data-idx"));
-            const edit = state2.undoStacks.textEdits[idx];
+            const edit = state.undoStacks.textEdits[idx];
             if (edit) {
               edit.element.innerHTML = edit.oldHTML;
-              state2.undoStacks.textEdits.splice(idx, 1);
+              state.undoStacks.textEdits.splice(idx, 1);
               showToast("Edit reverted");
               drawTextEditorDrawer();
             }
@@ -924,7 +925,7 @@ ${lines.join("\n")}
       const oldVal = e.target.dataset.oldText;
       const newVal = e.target.innerHTML;
       if (oldVal !== newVal) {
-        state2.undoStacks.textEdits.push({
+        state.undoStacks.textEdits.push({
           element: e.target,
           oldHTML: oldVal,
           newHTML: newVal
@@ -969,12 +970,12 @@ ${lines.join("\n")}
         card.onclick = () => {
           const fontName = card.getAttribute("data-font");
           const linkId = `gfont-${fontName.toLowerCase().replace(/\s+/g, "-")}`;
-          if (!state2.shadowRoot.getElementById(linkId)) {
+          if (!state.shadowRoot.getElementById(linkId)) {
             const link = document.createElement("link");
             link.id = linkId;
             link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;
             link.rel = "stylesheet";
-            state2.shadowRoot.appendChild(link);
+            state.shadowRoot.appendChild(link);
             const pageLink = document.createElement("link");
             pageLink.id = linkId;
             pageLink.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;
@@ -1385,7 +1386,7 @@ ${lines.join("\n")}
   // src/features/move-element.js
   function setupMoveElement() {
     function drawMoveDrawer() {
-      const logsHTML = state2.undoStacks.movedElements.map((move, i) => `
+      const logsHTML = state.undoStacks.movedElements.map((move, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${move.element.tagName.toLowerCase()}&gt; translated</span>
           <button class="hud-btn move-single-restore" data-idx="${i}" style="padding:2px 6px; font-size:9px;">Reset</button>
@@ -1403,7 +1404,7 @@ ${lines.join("\n")}
           </p>
         </div>
         <div style="margin-top:16px;">
-          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Moved components (${state2.undoStacks.movedElements.length}):</span>
+          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Moved components (${state.undoStacks.movedElements.length}):</span>
           <div class="custom-scroll" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto;">
             ${logsHTML || `<div style="font-size:10px; color:var(--text-secondary); text-align:center; padding:10px;">No components moved.</div>`}
           </div>
@@ -1413,10 +1414,10 @@ ${lines.join("\n")}
         slot.querySelectorAll(".move-single-restore").forEach((btn) => {
           btn.onclick = () => {
             const idx = parseInt(btn.getAttribute("data-idx"));
-            const record = state2.undoStacks.movedElements[idx];
+            const record = state.undoStacks.movedElements[idx];
             if (record) {
               record.element.style.transform = record.oldTransform;
-              state2.undoStacks.movedElements.splice(idx, 1);
+              state.undoStacks.movedElements.splice(idx, 1);
               showToast("Restored translation position");
               drawMoveDrawer();
             }
@@ -1427,31 +1428,31 @@ ${lines.join("\n")}
     drawMoveDrawer();
     trackListener(document, "mouseover", (e) => {
       if (isHUDElement(e.target) || e.target === document.body || e.target === document.documentElement) return;
-      if (state2.selectedElementForMove) return;
+      if (state.selectedElementForMove) return;
       const rect = e.target.getBoundingClientRect();
       showHighlight(rect, `${e.target.tagName.toLowerCase()} (Click to select)`);
     }, true);
     trackListener(document, "mouseout", (e) => {
-      if (isHUDElement(e.target) || state2.selectedElementForMove) return;
+      if (isHUDElement(e.target) || state.selectedElementForMove) return;
       hideHighlight();
     }, true);
     trackListener(document, "click", (e) => {
       if (isHUDElement(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      if (state2.selectedElementForMove) {
-        state2.selectedElementForMove = null;
+      if (state.selectedElementForMove) {
+        state.selectedElementForMove = null;
         hideHighlight();
         showToast("Element released");
       } else {
-        state2.selectedElementForMove = e.target;
+        state.selectedElementForMove = e.target;
         const rect = e.target.getBoundingClientRect();
         showHighlight(rect, `${e.target.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
       }
     }, true);
     trackListener(document, "keydown", (e) => {
-      if (!state2.selectedElementForMove) return;
-      const el = state2.selectedElementForMove;
+      if (!state.selectedElementForMove) return;
+      const el = state.selectedElementForMove;
       const style = window.getComputedStyle(el);
       let tx = 0, ty = 0;
       const matrix = style.transform || style.webkitTransform;
@@ -1482,14 +1483,14 @@ ${lines.join("\n")}
           handled = true;
           break;
         case "Escape":
-          state2.selectedElementForMove = null;
+          state.selectedElementForMove = null;
           hideHighlight();
           showToast("Move ended");
           break;
       }
       if (handled) {
         e.preventDefault();
-        state2.undoStacks.movedElements.push({ element: el, oldTransform: el.style.transform });
+        state.undoStacks.movedElements.push({ element: el, oldTransform: el.style.transform });
         el.style.transform = `translate(${tx}px, ${ty}px)`;
         drawMoveDrawer();
         setTimeout(() => {
@@ -1502,12 +1503,12 @@ ${lines.join("\n")}
     let dragStartX = 0, dragStartY = 0;
     let initialTx = 0, initialTy = 0;
     trackListener(document, "mousedown", (e) => {
-      if (!state2.selectedElementForMove || isHUDElement(e.target)) return;
-      if (e.target !== state2.selectedElementForMove && !state2.selectedElementForMove.contains(e.target)) return;
+      if (!state.selectedElementForMove || isHUDElement(e.target)) return;
+      if (e.target !== state.selectedElementForMove && !state.selectedElementForMove.contains(e.target)) return;
       isDragging = true;
       dragStartX = e.clientX;
       dragStartY = e.clientY;
-      const style = window.getComputedStyle(state2.selectedElementForMove);
+      const style = window.getComputedStyle(state.selectedElementForMove);
       const matrix = style.transform || style.webkitTransform;
       initialTx = 0;
       initialTy = 0;
@@ -1518,21 +1519,21 @@ ${lines.join("\n")}
           initialTy = parseFloat(parts[5]);
         }
       }
-      state2.moveStartPos = state2.selectedElementForMove.style.transform;
+      state.moveStartPos = state.selectedElementForMove.style.transform;
       e.preventDefault();
     }, true);
     trackListener(document, "mousemove", (e) => {
-      if (!isDragging || !state2.selectedElementForMove) return;
+      if (!isDragging || !state.selectedElementForMove) return;
       const dx = e.clientX - dragStartX;
       const dy = e.clientY - dragStartY;
-      state2.selectedElementForMove.style.transform = `translate(${initialTx + dx}px, ${initialTy + dy}px)`;
-      const rect = state2.selectedElementForMove.getBoundingClientRect();
-      showHighlight(rect, `${state2.selectedElementForMove.tagName.toLowerCase()} (Dragging...)`, "var(--accent-purple)");
+      state.selectedElementForMove.style.transform = `translate(${initialTx + dx}px, ${initialTy + dy}px)`;
+      const rect = state.selectedElementForMove.getBoundingClientRect();
+      showHighlight(rect, `${state.selectedElementForMove.tagName.toLowerCase()} (Dragging...)`, "var(--accent-purple)");
     }, true);
     trackListener(document, "mouseup", () => {
       if (isDragging) {
         isDragging = false;
-        state2.undoStacks.movedElements.push({ element: state2.selectedElementForMove, oldTransform: state2.moveStartPos });
+        state.undoStacks.movedElements.push({ element: state.selectedElementForMove, oldTransform: state.moveStartPos });
         drawMoveDrawer();
       }
     }, true);
@@ -1541,7 +1542,7 @@ ${lines.join("\n")}
   // src/features/delete-element.js
   function setupDeleteElement() {
     function drawDeleteDrawer() {
-      const logsHTML = state2.undoStacks.deletedElements.map((del, i) => `
+      const logsHTML = state.undoStacks.deletedElements.map((del, i) => `
         <div class="drawer-history-item">
           <span class="drawer-history-name">&lt;${del.element.tagName.toLowerCase()}&gt; hidden</span>
           <button class="hud-btn del-single-restore" data-idx="${i}" style="padding:2px 6px; font-size:9px;">Restore</button>
@@ -1557,7 +1558,7 @@ ${lines.join("\n")}
           </p>
         </div>
         <div style="margin-top:16px;">
-          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Hidden components (${state2.undoStacks.deletedElements.length}):</span>
+          <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px;">Hidden components (${state.undoStacks.deletedElements.length}):</span>
           <div class="custom-scroll" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto;">
             ${logsHTML || `<div style="font-size:10px; color:var(--text-secondary); text-align:center; padding:10px;">No elements hidden.</div>`}
           </div>
@@ -1567,10 +1568,10 @@ ${lines.join("\n")}
         slot.querySelectorAll(".del-single-restore").forEach((btn) => {
           btn.onclick = () => {
             const idx = parseInt(btn.getAttribute("data-idx"));
-            const record = state2.undoStacks.deletedElements[idx];
+            const record = state.undoStacks.deletedElements[idx];
             if (record) {
               record.element.style.display = record.oldDisplay;
-              state2.undoStacks.deletedElements.splice(idx, 1);
+              state.undoStacks.deletedElements.splice(idx, 1);
               showToast("Restored hidden element layout");
               drawDeleteDrawer();
             }
@@ -1592,7 +1593,7 @@ ${lines.join("\n")}
       if (isHUDElement(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      state2.undoStacks.deletedElements.push({
+      state.undoStacks.deletedElements.push({
         element: e.target,
         oldDisplay: e.target.style.display
       });
@@ -1634,7 +1635,7 @@ ${lines.join("\n")}
     }, true);
   }
   function renderExportDetailsInDrawer(element) {
-    const detailsSlot = state2.shadowRoot.getElementById("export-element-details");
+    const detailsSlot = state.shadowRoot.getElementById("export-element-details");
     if (!detailsSlot) return;
     detailsSlot.style.display = "block";
     const htmlCode = element.outerHTML;
@@ -1739,7 +1740,7 @@ ${lines.join("\n")}
       </div>
     `;
     openDrawer("Page Ruler", "Canvas-based layout measurement", guideHTML);
-    const canvas = state2.rulerCanvas;
+    const canvas = state.rulerCanvas;
     if (!canvas) return;
     canvas.style.display = "block";
     const ctx = canvas.getContext("2d");
@@ -1813,7 +1814,7 @@ ${lines.join("\n")}
       startX = null;
       startY = null;
     }, true);
-    state2.activeListeners.push({
+    state.activeListeners.push({
       target: window,
       event: "resize",
       callback: resizeCanvas,
@@ -1846,19 +1847,19 @@ ${lines.join("\n")}
       `;
       openDrawer("Page Outliner", "Inspect alignment shapes", contentHTML, (slot) => {
         const select = slot.querySelector("#outliner-color-select");
-        select.value = state2.outlinerColor;
+        select.value = state.outlinerColor;
         select.onchange = (e) => {
-          state2.outlinerColor = e.target.value;
+          state.outlinerColor = e.target.value;
           applyOutlinerBorders();
         };
       });
     }
     function applyOutlinerBorders() {
-      if (state2.customStyleElement && state2.customStyleElement.parentNode) {
-        state2.customStyleElement.parentNode.removeChild(state2.customStyleElement);
+      if (state.customStyleElement && state.customStyleElement.parentNode) {
+        state.customStyleElement.parentNode.removeChild(state.customStyleElement);
       }
-      state2.customStyleElement = document.createElement("style");
-      if (state2.outlinerColor === "random") {
+      state.customStyleElement = document.createElement("style");
+      if (state.outlinerColor === "random") {
         let randomCSS = "";
         const tags = ["div", "section", "article", "aside", "header", "footer", "p", "span", "a", "button", "input", "img"];
         tags.forEach((t) => {
@@ -1867,18 +1868,18 @@ ${lines.join("\n")}
 `;
         });
         randomCSS += "#super-webdev-hud-host * { outline: none !important; }\n";
-        state2.customStyleElement.textContent = randomCSS;
+        state.customStyleElement.textContent = randomCSS;
       } else {
-        state2.customStyleElement.textContent = `
+        state.customStyleElement.textContent = `
           * {
-            outline: 1px dashed ${state2.outlinerColor} !important;
+            outline: 1px dashed ${state.outlinerColor} !important;
           }
           #super-webdev-hud-host * {
             outline: none !important;
           }
         `;
       }
-      document.head.appendChild(state2.customStyleElement);
+      document.head.appendChild(state.customStyleElement);
     }
     drawOutlinerDrawer();
     applyOutlinerBorders();
@@ -1936,7 +1937,7 @@ ${lines.join("\n")}
     }, true);
   }
   function renderImageSwapDetailsInDrawer(element, isBg, currentSource) {
-    const detailsSlot = state2.shadowRoot.getElementById("image-replacer-details");
+    const detailsSlot = state.shadowRoot.getElementById("image-replacer-details");
     if (!detailsSlot) return;
     detailsSlot.style.display = "block";
     detailsSlot.innerHTML = `
@@ -2029,7 +2030,7 @@ ${lines.join("\n")}
     closeBtn.onclick = () => overlay.remove();
     overlay.appendChild(img);
     overlay.appendChild(closeBtn);
-    state2.shadowRoot.appendChild(overlay);
+    state.shadowRoot.appendChild(overlay);
   }
 
   // src/features/responsive-viewer.js
@@ -2044,7 +2045,7 @@ ${lines.join("\n")}
     { id: "desktop-1080p", name: "Desktop 1080p", width: 1920, height: 1080, scale: 0.3 }
   ];
   function setupResponsiveViewer() {
-    let overlay = state2.shadowRoot.getElementById("responsive-viewer-overlay");
+    let overlay = state.shadowRoot.getElementById("responsive-viewer-overlay");
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.id = "responsive-viewer-overlay";
@@ -2308,7 +2309,7 @@ ${lines.join("\n")}
         <!-- Frames Area -->
         <div id="rv-frames-slot" class="custom-scroll" style="flex:1; display:flex; gap:40px; padding:40px; overflow-x:auto; overflow-y:auto; background:#0d0f14;"></div>
       `;
-      state2.shadowRoot.appendChild(overlay);
+      state.shadowRoot.appendChild(overlay);
       overlay.querySelector("#rv-exit-btn").onclick = () => {
         overlay.style.display = "none";
         deactivateCurrentTool2();
@@ -2323,7 +2324,7 @@ ${lines.join("\n")}
 
   // src/features/settings.js
   function setupSettings() {
-    let modal = state2.shadowRoot.getElementById("settings-modal-overlay");
+    let modal = state.shadowRoot.getElementById("settings-modal-overlay");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "settings-modal-overlay";
@@ -2418,7 +2419,7 @@ ${lines.join("\n")}
           </div>
         </div>
       `;
-      state2.shadowRoot.appendChild(modal);
+      state.shadowRoot.appendChild(modal);
       const contentPanes = {
         "Account": `
           <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Account</h2>
@@ -2845,8 +2846,8 @@ ${lines.join("\n")}
   // src/core/tool-manager.js
   function activateTool2(tool) {
     deactivateCurrentTool2();
-    ensureHUD2();
-    state2.activeTool = tool;
+    ensureHUD();
+    state.activeTool = tool;
     updateSidebarActiveBtn();
     closeDrawer();
     switch (tool) {
@@ -2912,36 +2913,36 @@ ${lines.join("\n")}
     showToast(`Enabled: ${tool.replace(/-/g, " ").toUpperCase()}`);
   }
   function deactivateCurrentTool2() {
-    if (!state2.activeTool) return;
+    if (!state.activeTool) return;
     cleanupListeners();
     hideHighlight();
     closeDrawer();
-    if (state2.rulerCanvas) state2.rulerCanvas.style.display = "none";
-    if (state2.customStyleElement && state2.customStyleElement.parentNode) {
-      state2.customStyleElement.parentNode.removeChild(state2.customStyleElement);
-      state2.customStyleElement = null;
+    if (state.rulerCanvas) state.rulerCanvas.style.display = "none";
+    if (state.customStyleElement && state.customStyleElement.parentNode) {
+      state.customStyleElement.parentNode.removeChild(state.customStyleElement);
+      state.customStyleElement = null;
     }
     if (document.body.contentEditable === "true") {
       document.body.contentEditable = "false";
     }
-    state2.selectedElementForCss = null;
-    if (state2.selectedElementForMove) {
-      state2.selectedElementForMove.style.outline = "";
-      state2.selectedElementForMove = null;
+    state.selectedElementForCss = null;
+    if (state.selectedElementForMove) {
+      state.selectedElementForMove.style.outline = "";
+      state.selectedElementForMove = null;
     }
-    showToast(`Disabled: ${state2.activeTool.replace(/-/g, " ").toUpperCase()}`);
-    state2.activeTool = null;
+    showToast(`Disabled: ${state.activeTool.replace(/-/g, " ").toUpperCase()}`);
+    state.activeTool = null;
     updateSidebarActiveBtn();
   }
   function trackListener(target, event, callback, useCapture = false) {
     target.addEventListener(event, callback, useCapture);
-    state2.activeListeners.push({ target, event, callback, useCapture });
+    state.activeListeners.push({ target, event, callback, useCapture });
   }
   function cleanupListeners() {
-    state2.activeListeners.forEach(({ target, event, callback, useCapture }) => {
+    state.activeListeners.forEach(({ target, event, callback, useCapture }) => {
       target.removeEventListener(event, callback, useCapture);
     });
-    state2.activeListeners = [];
+    state.activeListeners = [];
   }
   function openCommandPalette() {
     const backdrop = document.createElement("div");
@@ -2954,7 +2955,7 @@ ${lines.join("\n")}
         </div>
       </div>
     `;
-    state2.shadowRoot.appendChild(backdrop);
+    state.shadowRoot.appendChild(backdrop);
     const input = backdrop.querySelector("#cmd-search-input");
     const listSlot = backdrop.querySelector("#cmd-list-slot");
     const commands = [
@@ -2993,9 +2994,9 @@ ${lines.join("\n")}
     function triggerActiveCommand() {
       const activeCmd = filtered[activeIndex];
       if (activeCmd) {
-        state2.shadowRoot.removeChild(backdrop);
+        state.shadowRoot.removeChild(backdrop);
         const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
-        if (premiumTools.includes(activeCmd.id) && !state2.isPremium) {
+        if (premiumTools.includes(activeCmd.id) && !state.isPremium) {
           showPremiumLockedDrawer(activeCmd.id);
           return;
         }
@@ -3022,7 +3023,7 @@ ${lines.join("\n")}
         triggerActiveCommand();
       } else if (e.key === "Escape") {
         e.preventDefault();
-        state2.shadowRoot.removeChild(backdrop);
+        state.shadowRoot.removeChild(backdrop);
       }
     };
     listSlot.onclick = (e) => {
@@ -3035,25 +3036,25 @@ ${lines.join("\n")}
     };
     backdrop.onclick = (e) => {
       if (e.target === backdrop) {
-        state2.shadowRoot.removeChild(backdrop);
+        state.shadowRoot.removeChild(backdrop);
       }
     };
     drawCommands();
   }
 
   // src/ui/hud.js
-  function ensureHUD2() {
-    if (state2.hostEl) return;
-    state2.hostEl = document.createElement("div");
-    state2.hostEl.id = "super-webdev-hud-host";
-    state2.hostEl.style.position = "fixed";
-    state2.hostEl.style.top = "0";
-    state2.hostEl.style.left = "0";
-    state2.hostEl.style.width = "0";
-    state2.hostEl.style.height = "0";
-    state2.hostEl.style.zIndex = "2147483647";
-    document.body.appendChild(state2.hostEl);
-    state2.shadowRoot = state2.hostEl.attachShadow({ mode: "open" });
+  function ensureHUD() {
+    if (state.hostEl) return;
+    state.hostEl = document.createElement("div");
+    state.hostEl.id = "super-webdev-hud-host";
+    state.hostEl.style.position = "fixed";
+    state.hostEl.style.top = "0";
+    state.hostEl.style.left = "0";
+    state.hostEl.style.width = "0";
+    state.hostEl.style.height = "0";
+    state.hostEl.style.zIndex = "2147483647";
+    document.body.appendChild(state.hostEl);
+    state.shadowRoot = state.hostEl.attachShadow({ mode: "open" });
     const svgFilters = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgFilters.style.display = "none";
     svgFilters.innerHTML = `
@@ -3073,7 +3074,7 @@ ${lines.join("\n")}
         </filter>
       </defs>
     `;
-    state2.shadowRoot.appendChild(svgFilters);
+    state.shadowRoot.appendChild(svgFilters);
     const style = document.createElement("style");
     style.textContent = `
       :host {
@@ -4557,15 +4558,15 @@ ${lines.join("\n")}
         overflow: hidden;
       }
     `;
-    state2.shadowRoot.appendChild(style);
-    state2.reopenTabEl = document.createElement("div");
-    state2.reopenTabEl.className = "reopen-tab reopen-tab-right";
-    state2.reopenTabEl.style.display = "none";
-    state2.reopenTabEl.innerHTML = `<span>\u25C0</span>`;
-    state2.shadowRoot.appendChild(state2.reopenTabEl);
-    state2.sidebarEl = document.createElement("div");
-    state2.sidebarEl.className = "sidebar-panel sidebar-right";
-    state2.sidebarEl.innerHTML = `
+    state.shadowRoot.appendChild(style);
+    state.reopenTabEl = document.createElement("div");
+    state.reopenTabEl.className = "reopen-tab reopen-tab-right";
+    state.reopenTabEl.style.display = "none";
+    state.reopenTabEl.innerHTML = `<span>\u25C0</span>`;
+    state.shadowRoot.appendChild(state.reopenTabEl);
+    state.sidebarEl = document.createElement("div");
+    state.sidebarEl.className = "sidebar-panel sidebar-right";
+    state.sidebarEl.innerHTML = `
       <!-- Top header branding -->
       <button class="sidebar-btn" id="sbtn-dashboard" title="SuperDev Pro">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -4677,10 +4678,10 @@ ${lines.join("\n")}
         <div class="sidebar-tip">Hide Sidebar (Cmd+Shift+E)</div>
       </button>
     `;
-    state2.shadowRoot.appendChild(state2.sidebarEl);
-    state2.drawerEl = document.createElement("div");
-    state2.drawerEl.className = "drawer-panel drawer-panel-right";
-    state2.drawerEl.innerHTML = `
+    state.shadowRoot.appendChild(state.sidebarEl);
+    state.drawerEl = document.createElement("div");
+    state.drawerEl.className = "drawer-panel drawer-panel-right";
+    state.drawerEl.innerHTML = `
       <div class="drawer-header">
         <div>
           <h3 class="drawer-title" id="drawer-title-slot">Tool Details</h3>
@@ -4692,34 +4693,34 @@ ${lines.join("\n")}
         <!-- Render content dynamic templates -->
       </div>
     `;
-    state2.shadowRoot.appendChild(state2.drawerEl);
-    state2.highlightOverlay = document.createElement("div");
-    state2.highlightOverlay.className = "highlight-overlay";
+    state.shadowRoot.appendChild(state.drawerEl);
+    state.highlightOverlay = document.createElement("div");
+    state.highlightOverlay.className = "highlight-overlay";
     ["vl", "vr", "ht", "hb"].forEach((g) => {
       const guide = document.createElement("div");
       guide.className = `highlight-guide-${g}`;
-      state2.highlightOverlay.appendChild(guide);
+      state.highlightOverlay.appendChild(guide);
     });
-    state2.shadowRoot.appendChild(state2.highlightOverlay);
-    state2.highlightLabel = document.createElement("div");
-    state2.highlightLabel.className = "highlight-label";
-    state2.shadowRoot.appendChild(state2.highlightLabel);
-    state2.inspectorTooltip = document.createElement("div");
-    state2.inspectorTooltip.className = "inspector-tooltip-card";
-    state2.shadowRoot.appendChild(state2.inspectorTooltip);
-    state2.rulerCanvas = document.createElement("canvas");
-    state2.rulerCanvas.className = "ruler-canvas";
-    state2.shadowRoot.appendChild(state2.rulerCanvas);
-    state2.toastEl = document.createElement("div");
-    state2.toastEl.className = "hud-toast";
-    state2.toastEl.innerHTML = `<span>\u2714\uFE0F</span> <span id="toast-text-slot">Action Completed</span>`;
-    state2.shadowRoot.appendChild(state2.toastEl);
+    state.shadowRoot.appendChild(state.highlightOverlay);
+    state.highlightLabel = document.createElement("div");
+    state.highlightLabel.className = "highlight-label";
+    state.shadowRoot.appendChild(state.highlightLabel);
+    state.inspectorTooltip = document.createElement("div");
+    state.inspectorTooltip.className = "inspector-tooltip-card";
+    state.shadowRoot.appendChild(state.inspectorTooltip);
+    state.rulerCanvas = document.createElement("canvas");
+    state.rulerCanvas.className = "ruler-canvas";
+    state.shadowRoot.appendChild(state.rulerCanvas);
+    state.toastEl = document.createElement("div");
+    state.toastEl.className = "hud-toast";
+    state.toastEl.innerHTML = `<span>\u2714\uFE0F</span> <span id="toast-text-slot">Action Completed</span>`;
+    state.shadowRoot.appendChild(state.toastEl);
     setupSidebarEvents();
     loadPersistentSettings();
   }
   function loadPersistentSettings() {
     chrome.storage.local.get(["sidebarPosition", "premium"], (res) => {
-      state2.isPremium = res.premium !== false;
+      state.isPremium = res.premium !== false;
       if (res.sidebarPosition === "left") {
         setSidebarPosition("left");
       } else {
@@ -4728,66 +4729,66 @@ ${lines.join("\n")}
     });
   }
   function applyDrawerPositionClass(pos) {
-    if (!state2.drawerEl) return;
+    if (!state.drawerEl) return;
     if (pos === "left") {
-      state2.drawerEl.classList.add("drawer-panel-left");
-      state2.drawerEl.classList.remove("drawer-panel-right");
+      state.drawerEl.classList.add("drawer-panel-left");
+      state.drawerEl.classList.remove("drawer-panel-right");
     } else {
-      state2.drawerEl.classList.add("drawer-panel-right");
-      state2.drawerEl.classList.remove("drawer-panel-left");
+      state.drawerEl.classList.add("drawer-panel-right");
+      state.drawerEl.classList.remove("drawer-panel-left");
     }
   }
   function setSidebarPosition(pos) {
-    state2.sidebarPosition = pos;
+    state.sidebarPosition = pos;
     chrome.storage.local.set({ sidebarPosition: pos });
     if (pos === "left") {
-      state2.sidebarEl.classList.add("sidebar-left");
-      state2.sidebarEl.classList.remove("sidebar-right");
-      state2.reopenTabEl.className = "reopen-tab reopen-tab-left";
-      state2.reopenTabEl.innerHTML = `<span>\u25B6</span>`;
+      state.sidebarEl.classList.add("sidebar-left");
+      state.sidebarEl.classList.remove("sidebar-right");
+      state.reopenTabEl.className = "reopen-tab reopen-tab-left";
+      state.reopenTabEl.innerHTML = `<span>\u25B6</span>`;
     } else {
-      state2.sidebarEl.classList.add("sidebar-right");
-      state2.sidebarEl.classList.remove("sidebar-left");
-      state2.reopenTabEl.className = "reopen-tab reopen-tab-right";
-      state2.reopenTabEl.innerHTML = `<span>\u25C0</span>`;
+      state.sidebarEl.classList.add("sidebar-right");
+      state.sidebarEl.classList.remove("sidebar-left");
+      state.reopenTabEl.className = "reopen-tab reopen-tab-right";
+      state.reopenTabEl.innerHTML = `<span>\u25C0</span>`;
     }
     applyDrawerPositionClass(pos);
     closeDrawer();
   }
   function toggleSidebarVisibility2() {
-    ensureHUD2();
-    setSidebarVisible2(!state2.sidebarVisible);
+    ensureHUD();
+    setSidebarVisible2(!state.sidebarVisible);
   }
   function setSidebarVisible2(visible) {
-    state2.sidebarVisible = visible;
+    state.sidebarVisible = visible;
     if (visible) {
-      state2.sidebarEl.classList.remove("sidebar-hidden");
-      state2.reopenTabEl.style.display = "none";
+      state.sidebarEl.classList.remove("sidebar-hidden");
+      state.reopenTabEl.style.display = "none";
     } else {
-      state2.sidebarEl.classList.add("sidebar-hidden");
-      state2.reopenTabEl.style.display = "flex";
+      state.sidebarEl.classList.add("sidebar-hidden");
+      state.reopenTabEl.style.display = "flex";
       closeDrawer();
     }
   }
   function setupSidebarEvents() {
-    state2.reopenTabEl.addEventListener("click", () => {
+    state.reopenTabEl.addEventListener("click", () => {
       setSidebarVisible2(true);
     });
-    state2.shadowRoot.getElementById("sbtn-collapse").addEventListener("click", () => {
+    state.shadowRoot.getElementById("sbtn-collapse").addEventListener("click", () => {
       setSidebarVisible2(false);
     });
-    state2.shadowRoot.getElementById("sbtn-settings-position").addEventListener("click", () => {
-      const targetPos = state2.sidebarPosition === "right" ? "left" : "right";
+    state.shadowRoot.getElementById("sbtn-settings-position").addEventListener("click", () => {
+      const targetPos = state.sidebarPosition === "right" ? "left" : "right";
       setSidebarPosition(targetPos);
       showToast(`Docked position: ${targetPos.toUpperCase()}`);
     });
-    state2.shadowRoot.getElementById("drawer-close-btn").addEventListener("click", () => {
+    state.shadowRoot.getElementById("drawer-close-btn").addEventListener("click", () => {
       closeDrawer();
     });
-    state2.shadowRoot.getElementById("sbtn-dashboard").addEventListener("click", () => {
+    state.shadowRoot.getElementById("sbtn-dashboard").addEventListener("click", () => {
       openDashboardDrawer();
     });
-    state2.shadowRoot.getElementById("sbtn-cmd-palette").addEventListener("click", () => {
+    state.shadowRoot.getElementById("sbtn-cmd-palette").addEventListener("click", () => {
       openCommandPalette();
     });
     const tools = [
@@ -4813,13 +4814,13 @@ ${lines.join("\n")}
       { id: "settings", btnId: "sbtn-settings-drawer" }
     ];
     tools.forEach((tool) => {
-      state2.shadowRoot.getElementById(tool.btnId).addEventListener("click", () => {
+      state.shadowRoot.getElementById(tool.btnId).addEventListener("click", () => {
         const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
-        if (premiumTools.includes(tool.id) && !state2.isPremium) {
+        if (premiumTools.includes(tool.id) && !state.isPremium) {
           showPremiumLockedDrawer(tool.id);
           return;
         }
-        if (state2.activeTool === tool.id) {
+        if (state.activeTool === tool.id) {
           deactivateCurrentTool2();
         } else {
           activateTool2(tool.id);
@@ -4834,42 +4835,42 @@ ${lines.join("\n")}
     }
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
       e.preventDefault();
-      ensureHUD2();
+      ensureHUD();
       openCommandPalette();
     }
   });
   function updateSidebarActiveBtn() {
-    if (!state2.sidebarEl) return;
-    state2.sidebarEl.querySelectorAll(".sidebar-btn").forEach((btn) => {
+    if (!state.sidebarEl) return;
+    state.sidebarEl.querySelectorAll(".sidebar-btn").forEach((btn) => {
       btn.classList.remove("active-tool");
     });
-    if (state2.activeTool) {
-      const activeBtn = state2.shadowRoot.getElementById(`sbtn-${state2.activeTool}`);
+    if (state.activeTool) {
+      const activeBtn = state.shadowRoot.getElementById(`sbtn-${state.activeTool}`);
       if (activeBtn) activeBtn.classList.add("active-tool");
     }
   }
 
   // src/content.js
-  ensureHUD2();
+  ensureHUD();
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "toggle-sidebar") {
-      if (state2.sidebarEl) {
-        if (state2.isSidebarOpen) {
-          state2.sidebarEl.style.transform = "translateX(-120%)";
-          state2.sidebarEl.style.opacity = "0";
-          state2.isSidebarOpen = false;
+      if (state.sidebarEl) {
+        if (state.isSidebarOpen) {
+          state.sidebarEl.style.transform = "translateX(-120%)";
+          state.sidebarEl.style.opacity = "0";
+          state.isSidebarOpen = false;
           deactivateCurrentTool2();
         } else {
-          state2.sidebarEl.style.transform = "translateX(0)";
-          state2.sidebarEl.style.opacity = "1";
-          state2.isSidebarOpen = true;
+          state.sidebarEl.style.transform = "translateX(0)";
+          state.sidebarEl.style.opacity = "1";
+          state.isSidebarOpen = true;
         }
       }
     } else if (req.action === "activate-tool") {
-      if (!state2.isSidebarOpen && state2.sidebarEl) {
-        state2.sidebarEl.style.transform = "translateX(0)";
-        state2.sidebarEl.style.opacity = "1";
-        state2.isSidebarOpen = true;
+      if (!state.isSidebarOpen && state.sidebarEl) {
+        state.sidebarEl.style.transform = "translateX(0)";
+        state.sidebarEl.style.opacity = "1";
+        state.isSidebarOpen = true;
       }
       activateTool2(req.tool);
     }
