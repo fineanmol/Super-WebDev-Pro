@@ -1,4 +1,7 @@
 import { state } from '../state.js';
+import { ensureHUD } from './hud.js';
+import { formatElementSelector, getFirstFontFamily, extractColor } from '../utils.js';
+
 
 export   function showHighlight(rect, labelText, customColor = null) {
     ensureHUD();
