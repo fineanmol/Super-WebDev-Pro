@@ -3132,12 +3132,13 @@
       listSlot.innerHTML = "";
 
       propNames.forEach(propName => {
-        let propVal = el.style[propName] || computed.getPropertyValue(propName) || computed[propName] || "";
+        let propVal = el.style.getPropertyValue(propName) || computed.getPropertyValue(propName) || computed[propName] || "";
         
         // If property is disabled, we grab the cached value
         const isDisabled = disabledSet.has(propName);
         if (isDisabled) {
-          propVal = valuesMap[propName] || propVal;
+          const cached = valuesMap[propName];
+          propVal = cached ? (cached.inline || cached.computed) : propVal;
         }
 
         const row = document.createElement("div");
@@ -3238,15 +3239,20 @@
         eyeBtn.onclick = () => {
           if (isDisabled) {
             disabledSet.delete(propName);
-            const cachedVal = valuesMap[propName] || "";
-            if (cachedVal) {
-              el.style.setProperty(propName, cachedVal, "important");
+            const cached = valuesMap[propName];
+            if (cached && cached.inline) {
+              el.style.setProperty(propName, cached.inline, "important");
+            } else {
+              el.style.removeProperty(propName);
             }
             delete valuesMap[propName];
           } else {
             disabledSet.add(propName);
-            valuesMap[propName] = propVal;
-            el.style.removeProperty(propName);
+            valuesMap[propName] = {
+              inline: el.style.getPropertyValue(propName),
+              computed: propVal
+            };
+            el.style.setProperty(propName, "unset", "important");
           }
           renderPropertiesList();
           const newRect = el.getBoundingClientRect();
