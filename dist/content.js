@@ -5347,20 +5347,22 @@ ${lines.join("\n")}
   }
   function destroyHUD() {
     deactivateCurrentTool();
-    if (state.hostEl) {
-      state.hostEl.remove();
-      state.hostEl = null;
-      state.shadowRoot = null;
-      state.sidebarEl = null;
-      state.drawerEl = null;
-      state.toastEl = null;
-      state.reopenTabEl = null;
-      state.highlightOverlay = null;
-      state.highlightLabel = null;
-      state.inspectorTooltip = null;
-      state.rulerCanvas = null;
-      state.sidebarVisible = false;
-    }
+    chrome.storage.local.set({ hudEnabled: false }, () => {
+      if (state.hostEl) {
+        state.hostEl.remove();
+        state.hostEl = null;
+        state.shadowRoot = null;
+        state.sidebarEl = null;
+        state.drawerEl = null;
+        state.toastEl = null;
+        state.reopenTabEl = null;
+        state.highlightOverlay = null;
+        state.highlightLabel = null;
+        state.inspectorTooltip = null;
+        state.rulerCanvas = null;
+        state.sidebarVisible = false;
+      }
+    });
   }
   function updateSidebarActiveBtn() {
     if (!state.sidebarEl) return;
@@ -5386,31 +5388,65 @@ ${lines.join("\n")}
   init_state();
   init_hud();
   init_tool_manager();
-  ensureHUD();
+  chrome.storage.local.get("hudEnabled", (res) => {
+    if (res.hudEnabled !== false) {
+      ensureHUD();
+    }
+  });
   document.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
       e.preventDefault();
-      toggleSidebarVisibility();
+      chrome.storage.local.get("hudEnabled", (res) => {
+        if (res.hudEnabled === false) {
+          chrome.storage.local.set({ hudEnabled: true }, () => {
+            ensureHUD();
+            setSidebarVisible(true);
+          });
+        } else {
+          toggleSidebarVisibility();
+        }
+      });
     }
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
       e.preventDefault();
-      ensureHUD();
-      openCommandPalette();
+      chrome.storage.local.get("hudEnabled", (res) => {
+        if (res.hudEnabled === false) {
+          chrome.storage.local.set({ hudEnabled: true }, () => {
+            ensureHUD();
+            openCommandPalette();
+          });
+        } else {
+          ensureHUD();
+          openCommandPalette();
+        }
+      });
     }
   });
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "toggle-sidebar" || req.action === "toggleSidebarShortcut") {
-      toggleSidebarVisibility();
-      sendResponse({ status: "success" });
+      chrome.storage.local.get("hudEnabled", (res) => {
+        if (res.hudEnabled === false) {
+          chrome.storage.local.set({ hudEnabled: true }, () => {
+            ensureHUD();
+            setSidebarVisible(true);
+            sendResponse({ status: "success" });
+          });
+        } else {
+          toggleSidebarVisibility();
+          sendResponse({ status: "success" });
+        }
+      });
       return true;
     }
     if (req.action === "activate-tool") {
-      ensureHUD();
-      if (!state.sidebarVisible) {
-        setSidebarVisible(true);
-      }
-      activateTool(req.tool);
-      sendResponse({ status: "success" });
+      chrome.storage.local.set({ hudEnabled: true }, () => {
+        ensureHUD();
+        if (!state.sidebarVisible) {
+          setSidebarVisible(true);
+        }
+        activateTool(req.tool);
+        sendResponse({ status: "success" });
+      });
       return true;
     }
     if (req.action === "getActiveTool") {
@@ -5419,17 +5455,19 @@ ${lines.join("\n")}
     }
     if (req.action === "toggleTool") {
       state.isPremium = !!req.premium;
-      ensureHUD();
-      if (!state.sidebarVisible) {
-        setSidebarVisible(true);
-      }
-      if (state.activeTool === req.tool) {
-        deactivateCurrentTool();
-        sendResponse({ status: "success", isActive: false });
-      } else {
-        activateTool(req.tool);
-        sendResponse({ status: "success", isActive: true });
-      }
+      chrome.storage.local.set({ hudEnabled: true }, () => {
+        ensureHUD();
+        if (!state.sidebarVisible) {
+          setSidebarVisible(true);
+        }
+        if (state.activeTool === req.tool) {
+          deactivateCurrentTool();
+          sendResponse({ status: "success", isActive: false });
+        } else {
+          activateTool(req.tool);
+          sendResponse({ status: "success", isActive: true });
+        }
+      });
       return true;
     }
   });

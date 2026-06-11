@@ -1871,20 +1871,22 @@ export   function setupSidebarEvents() {
 
 export function destroyHUD() {
   deactivateCurrentTool();
-  if (state.hostEl) {
-    state.hostEl.remove();
-    state.hostEl = null;
-    state.shadowRoot = null;
-    state.sidebarEl = null;
-    state.drawerEl = null;
-    state.toastEl = null;
-    state.reopenTabEl = null;
-    state.highlightOverlay = null;
-    state.highlightLabel = null;
-    state.inspectorTooltip = null;
-    state.rulerCanvas = null;
-    state.sidebarVisible = false;
-  }
+  chrome.storage.local.set({ hudEnabled: false }, () => {
+    if (state.hostEl) {
+      state.hostEl.remove();
+      state.hostEl = null;
+      state.shadowRoot = null;
+      state.sidebarEl = null;
+      state.drawerEl = null;
+      state.toastEl = null;
+      state.reopenTabEl = null;
+      state.highlightOverlay = null;
+      state.highlightLabel = null;
+      state.inspectorTooltip = null;
+      state.rulerCanvas = null;
+      state.sidebarVisible = false;
+    }
+  });
 }
 
 export   function updateSidebarActiveBtn() {
