@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "build": "esbuild src/content.js --bundle --outfile=dist/content.js",
+    "watch": "esbuild src/content.js --bundle --outfile=dist/content.js --watch"
+  },
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}

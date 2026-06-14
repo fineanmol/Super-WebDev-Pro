@@ -1,122 +1,126 @@
-# Super Web Dev Extension
+# ⚡ SuperDev Pro — The Ultimate Web Developer Extensions Suite
 
-## Description
-Super Web Dev Extension is a comprehensive Chrome extension designed to provide web developers with a suite of tools to enhance their development workflow. This extension includes features like CSS inspection and editing, live text editing, font management, color picking, and much more, all in a modern and user-friendly interface.
+[![Manifest Version](https://img.shields.io/badge/manifest-v3-blue.svg?style=flat-square)](#)
+[![Bundler](https://img.shields.io/badge/bundler-esbuild-yellow.svg?style=flat-square)](#)
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
+[![Platform Compatibility](https://img.shields.io/badge/platform-chrome%20%7C%20firefox%20%7C%20edge-orange.svg?style=flat-square)](#)
 
-## Features
-- **CSS Inspector**: Inspect and edit the CSS properties of a website with autocomplete and save, copy, or export your changes.
-- **Live Text Editor**: Easily edit the text of a website in a single click and undo changes in case of a mistake.
-- **Fonts Changer**: Experiment with 1100+ Google and local fonts on a website, and save, copy, or export your changes.
-- **List All Fonts**: Identify all fonts used on a website with their sizes, weights, and how they look, and copy or export all data.
-- **Color Picker**: Pick colors from a website at pixel level and copy or export them in HEX, RGB, or HSL color format.
-- **Color Palette**: Discover all colors used on a website and copy or export them in HEX, RGB, or HSL color format.
-- **Move Element**: Easily move different website elements in a single click and undo changes in case of a mistake.
-- **Delete Element**: Easily delete or hide website elements in a single click and undo changes in case of a mistake.
-- **Export Element**: Export your favorite element from a website to CodePen or an HTML file in a single click.
-- **Extract Images**: Extract all kinds of images from a website in a single click and export them at once or individually.
-- **Page Ruler**: Measure distances between everything you see on a website in real-time; works like magic everywhere.
-- **Page Outliner**: Outline entire website or an HTML tag with red, green, blue, or randomly generated colors.
-- **Image Replacer**: Easily replace website images with local images from your device and undo changes in case of a mistake.
-- **Take Screenshot**: Capture visible area, custom area, or full page screenshot of a website in PNG, JPEG, or PDF format.
+SuperDev Pro is a premium, all-in-one browser extension that packs **50+ web developer & designer tools** directly inside a sleek, responsive sidebar HUD. Completely modularized and sandboxed in a clean Shadow DOM, it replaces dozens of standalone extensions, letting you inspect, edit, design, and audit any webpage without ever opening your browser's dev tools console.
 
-## Installation
+---
 
-### From Source
-1. Clone the repository:
-    ```sh
-    git clone https://github.com/yourusername/super-web-dev-extension.git
-    cd super-web-dev-extension
-    ```
+## 🚀 Key Features Catalog
 
-2. Open Chrome and go to `chrome://extensions/`.
+SuperDev Pro is structured into core feature areas accessible through a floating HUD or options panel:
 
-3. Enable "Developer mode" using the toggle switch in the top right corner.
+### 🔍 1. Inspect & Edit
+* **CSS Inspector**: Inspect and modify CSS properties live with autocompletion. Save, copy, or export modifications in real-time.
+* **Live Text Editor**: Instantly edit page copy/text content in a single click with deep history tracking.
+* **Export Element**: Extract any HTML/CSS node bundle and export it directly to CodePen or as a local file.
+* **Image Swap**: Swap image assets on the fly with local files or remote URLs.
+* **Delete Element**: Safely clear unwanted or blocking elements from the DOM with full undo history.
 
-4. Click on the "Load unpacked" button and select the `super-web-dev-extension` directory.
+### 🎨 2. Colors & Typography
+* **Color Picker**: Pixel-level eyedropper tool to capture colors and auto-copy them in HEX, RGB, or HSL format.
+* **Color Palette**: Automatically extract the primary color schemes and palettes used across the active webpage.
+* **Font Changer**: Instantly preview and apply over 1,100+ Google Fonts and local font weights.
+* **List Fonts**: Map every font family used on the page, with rendering specs, sizes, and font-weight breakdowns.
 
-### From Chrome Web Store
-*(Once published)*
+### 📏 3. Layout & Diagnostics
+* **Page Ruler**: Measure pixel distances and coordinates between elements with extreme precision.
+* **Outliner**: Outline elements to visualize layouts, flexbox flows, and CSS grid boundaries.
+* **Move Element**: Drag and reposition DOM elements dynamically while maintaining baseline styles.
+* **Responsive Viewer**: Multi-device viewport simulator with fluid resizing, device catalogs, and synchronous scrolling.
 
-1. Go to the Chrome Web Store.
-2. Search for "Super Web Dev Extension".
-3. Click "Add to Chrome".
+### 💻 4. Audits & Utilities
+* **Tech Stack Detector**: Analyze frameworks, libraries, analytical scripts, and tools a site is built with.
+* **SEO Meta Inspector**: Instant reporting on headings hierarchy, canonical tags, description lengths, and social graphs.
+* **Accessibility Audit**: Real-time evaluation of ARIA attributes, image alt tags, tap targets, and contrast ratios.
+* **Command Palette**: Run actions and trigger tools instantly via an interactive search palette.
 
-## Usage
-1. Click on the Super Web Dev Extension icon in the Chrome toolbar.
-2. Select the feature you want to use from the popup menu.
-3. Follow the on-screen instructions to use the selected feature.
+---
 
-## Development
+## ⌨️ Global Keyboard Shortcuts
 
-### Project Structure
+Control the extension instantly from any page using standard, non-conflicting keyboard shortcuts:
+
+| Action | macOS Shortcut | Windows / Linux Shortcut |
+| :--- | :--- | :--- |
+| **Toggle Sidebar** | `Command` + `Shift` + `E` | `Ctrl` + `Shift` + `E` |
+| **Open Command Palette** | `Command` + `Shift` + `P` | `Ctrl` + `Shift` + `P` |
+| **Close Active Tool** | `Escape` | `Escape` |
+
+---
+
+## 📦 Architecture & Directory Structure
+
+SuperDev Pro uses a highly decoupled, state-driven architecture. All tool UI panels, canvases, and guidelines are isolated inside a **Shadow DOM** (`#super-webdev-hud-host`) to prevent styling bleed or page-level conflicts.
+
 ```
 super-web-dev-extension/
-├── manifest.json
-├── background.js
-├── content.js
-├── popup.html
-├── popup.js
-├── styles.css
-├── features/
-│   ├── css-inspector.js
-│   ├── live-text-editor.js
-│   ├── fonts-changer.js
-│   ├── list-fonts.js
-│   ├── color-picker.js
-│   ├── color-palette.js
-│   ├── move-element.js
-│   ├── delete-element.js
-│   ├── export-element.js
-│   ├── extract-images.js
-│   ├── page-ruler.js
-│   ├── page-outliner.js
-│   ├── image-replacer.js
-│   └── take-screenshot.js
-└── assets/
-    ├── icon16.png
-    ├── icon48.png
-    └── icon128.png
-
+├── manifest.json            # MV3 extension configuration
+├── background.js            # Background worker (CORS downloads, capture context)
+├── popup.html               # Dropdown option panel markup
+├── popup.js                 # Popup triggers and local activation checks
+├── styles.css               # Popup and Options stylesheets
+├── dist/
+│   └── content.js           # Compiled esbuild target bundle
+└── src/                     # Source directory
+    ├── content.js           # Extension entry point & message router
+    ├── state.js             # Global reactive state definitions
+    ├── utils.js             # Side-effect-free helpers (HTML escaping, color conversions)
+    ├── core/
+    │   └── tool-manager.js  # Tool activator/deactivator registry
+    ├── ui/
+    │   ├── drawer.js        # Info panel drawer rendering
+    │   ├── highlight.js     # Highlight guidelines & tooltip box
+    │   ├── hud.js           # Core sidebar initialization and toggle managers
+    │   └── toast.js         # User action feedback toast banner
+    └── features/            # Feature modules (CSS Inspector, Ruler, A11y, etc.)
 ```
 
+---
 
-### manifest.json
-Defines the permissions and files used in the extension.
+## ⚙️ Installation & Development Setup
 
-### background.js
-Handles background processes and events for the extension.
+### Prerequisites
+* **Node.js** (v16+)
+* **npm**
 
-### content.js
-Injects scripts into the webpage and interacts with the DOM.
+### 1. Build from Source
+First, clone the repository and install dev dependencies (used for esbuild):
+```bash
+git clone https://github.com/fineanmol/Super-WebDev-Pro.git
+cd Super-WebDev-Pro
+npm install
+```
 
-### popup.html
-The main user interface of the extension, providing buttons to access each feature.
+Compile the modular source scripts into the final content bundle:
+```bash
+# One-time build
+npm run build
 
-### popup.js
-Contains the logic to handle user interactions from the popup menu and execute the corresponding feature scripts.
+# Development watch mode
+npm run watch
+```
 
-### styles.css
-Defines the styles for the popup user interface.
+### 2. Load the Extension in Chrome
+1. Open Google Chrome and navigate to `chrome://extensions/`.
+2. Turn on the **Developer mode** toggle in the top-right corner.
+3. Click the **Load unpacked** button in the top-left.
+4. Select the root `super-web-dev-extension` project folder.
 
-### features/
-Contains individual JavaScript files for each feature, providing the functionality described above.
+---
 
-## Future Features
-Here are some additional features that could be added to the Super Web Dev Extension in the future:
-- **Responsive Design Tester**: Test how a website looks and behaves on various screen sizes and devices.
-- **Performance Analyzer**: Analyze the performance of a website and provide suggestions for improvements.
-- **Accessibility Checker**: Check a website for accessibility issues and provide recommendations for fixing them.
-- **SEO Analyzer**: Analyze the SEO performance of a website and provide suggestions for improvements.
-- **Form Filler**: Automatically fill out forms on a website with predefined or random data for testing purposes.
-- **JavaScript Console**: A built-in JavaScript console to run scripts directly from the extension.
-- **Network Monitor**: Monitor and log network requests made by the website.
-- **Storage Inspector**: Inspect and manage local storage, session storage, and cookies used by the website.
-- **Style Editor**: A more advanced CSS editor with features like SASS/SCSS support and live preview.
-- **Code Beautifier**: Beautify and format HTML, CSS, and JavaScript code on a webpage.
-- **Version Control Integration**: Integrate with Git or other version control systems to manage changes directly from the extension.
+## 🛡️ Security, Privacy, and Performance
 
-## Contributing
-Feel free to fork the repository and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
+* **Sanitized Interpolations**: Incorporates a strict `escapeHTML` helper to sanitize all page-controlled variables (e.g. document titles, meta descriptors, headings) preventing HTML/XSS injection on target websites.
+* **CORS Bypass via Service Worker**: Image extraction downloads are routed through background message passing utilizing `chrome.downloads` in `background.js` to ensure reliable cross-origin downloads without violating browser security sandboxes.
+* **Local CSP Compliance**: Google Fonts `@import` references have been replaced with beautiful, modern local font stacks to adhere to MV3 content security rules.
+* **Persistent Deactivation**: Closing the extension sidebar commits a `hudEnabled: false` setting to `chrome.storage.local`. The extension remains unloaded on subsequent tabs and refreshes until explicitly reactivated.
 
-## License
-[MIT](https://choosealicense.com/licenses/mit/)
+---
+
+## 🛡️ License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
