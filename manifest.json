@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SuperDev Pro — Web Developer Toolkit",
   "version": "1.0.0",
-  "description": "Free all-in-one web dev toolkit: inspect & edit CSS, pick colors, swap fonts, export elements, measure, extract images, and screenshot.",
+  "description": "Free all-in-one web dev toolkit: inspect & edit CSS, pick colors, swap fonts, export elements, measure, extract images, screenshot.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "host_permissions": ["*://*/*"],
   "background": {
