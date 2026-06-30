@@ -78,7 +78,6 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   }
 
   if (req.action === "toggleTool") {
-    state.isPremium = !!req.premium;
     chrome.storage.local.set({ hudEnabled: true }, () => {
       ensureHUD();
       if (!state.sidebarVisible) {

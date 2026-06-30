@@ -57,6 +57,8 @@ export   function setupColorPicker() {
             navigator.clipboard.writeText(res.sRGBHex.toUpperCase());
             showToast(`Copied picked color: ${res.sRGBHex.toUpperCase()}`);
             drawColorPickerDrawer(res.sRGBHex);
+          }).catch(() => {
+            // User pressed Escape / cancelled the eyedropper — nothing to do.
           });
         };
 

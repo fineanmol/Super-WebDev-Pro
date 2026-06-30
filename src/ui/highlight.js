@@ -13,10 +13,13 @@ export   function showHighlight(rect, labelText, customColor = null) {
 
     if (customColor) {
       state.highlightOverlay.style.borderColor = customColor;
-      if (typeof customColor === "string" && customColor.startsWith("var(")) {
-        state.highlightOverlay.style.backgroundColor = "rgba(184, 163, 252, 0.08)"; // fallback translucent
+      // Build a translucent fill that works for any color format. A 6-digit
+      // hex (#rrggbb) can take an alpha suffix; everything else (var(), rgb(),
+      // named, 3-digit hex) falls back to a safe translucent tint.
+      if (/^#[0-9a-fA-F]{6}$/.test(customColor)) {
+        state.highlightOverlay.style.backgroundColor = `${customColor}1a`;
       } else {
-        state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+        state.highlightOverlay.style.backgroundColor = "rgba(184, 163, 252, 0.08)";
       }
       state.highlightLabel.style.backgroundColor = customColor;
     } else {
@@ -43,7 +46,7 @@ export   function showHighlight(rect, labelText, customColor = null) {
   // Helper check element inside Shadow Root
 
 export   function isHUDElement(el) {
-    if (!el) return false;
+    if (!el || !state.hostEl) return false;
     if (el === state.hostEl || state.hostEl.contains(el)) return true;
     return false;
   }
@@ -53,6 +56,8 @@ export   function hideHighlight() {
     if (state.highlightOverlay) {
       state.highlightOverlay.style.display = "none";
       state.highlightOverlay.classList.remove("show-guides");
+    }
+    if (state.highlightLabel) {
       state.highlightLabel.style.display = "none";
     }
     if (state.inspectorTooltip) {

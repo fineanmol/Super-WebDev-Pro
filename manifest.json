@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Super Web Dev Extension",
-  "version": "1.0",
-  "description": "A premium developer toolkit for inspecting CSS, live text editing, font styling, color picking, element exports, measuring pixels, image extraction, and instant screenshots.",
+  "name": "SuperDev Pro — Web Developer Toolkit",
+  "version": "1.0.0",
+  "description": "Free all-in-one web dev toolkit: inspect & edit CSS, pick colors, swap fonts, export elements, measure, extract images, and screenshot.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "host_permissions": ["*://*/*"],
   "background": {

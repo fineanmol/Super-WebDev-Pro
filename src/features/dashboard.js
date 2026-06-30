@@ -15,9 +15,9 @@ export   function openDashboardDrawer() {
         </p>
       </div>
       <div class="audit-card audit-success" style="margin-top:12px;">
-        <div style="font-size: 12px; font-weight: 700; color:#4ade80; margin-bottom: 4px;">🔑 Premium Key: Active</div>
+        <div style="font-size: 12px; font-weight: 700; color:#4ade80; margin-bottom: 4px;">✅ All Tools Unlocked</div>
         <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0;">
-          All Pro tools are fully unlocked. Licensed under <b>WEBDEVPRO2026</b>.
+          Every tool is free to use — no account or license required.
         </p>
       </div>
       <div style="margin-top: 16px;">

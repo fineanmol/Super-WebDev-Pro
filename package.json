@@ -1,7 +1,11 @@
 {
+  "name": "superdev-pro",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "build": "esbuild src/content.js --bundle --outfile=dist/content.js",
-    "watch": "esbuild src/content.js --bundle --outfile=dist/content.js --watch"
+    "watch": "esbuild src/content.js --bundle --outfile=dist/content.js --watch",
+    "package": "npm run build && rm -f superdev-pro.zip && zip -r superdev-pro.zip manifest.json background.js popup.html popup.js styles.css privacy-policy.html dist assets"
   },
   "dependencies": {
     "jsdom": "^29.1.1"

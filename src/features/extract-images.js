@@ -64,20 +64,39 @@ export   function setupExtractImages() {
     let activeSizeFilter = "All";
     let searchQuery = "";
 
-    const renderGrid = (slot) => {
-      const filtered = imagesList.filter(img => {
-        if (activeTypeFilter !== "All" && img.type !== activeTypeFilter) return false;
-        // Size filter placeholder logic
+    // Shared predicate so the grid and "Download all" stay consistent.
+    const matchesFilters = (img) => {
+      if (activeTypeFilter !== "All" && img.type !== activeTypeFilter) return false;
+
+      // Size filter — only applied once an image's real dimensions are known
+      // (width is 0 until the <img> loads). Unmeasured images are kept so a
+      // size filter never wrongly hides everything right after the panel opens.
+      if (activeSizeFilter !== "All" && img.width > 0) {
         if (activeSizeFilter === "Small" && img.width > 200) return false;
         if (activeSizeFilter === "Medium" && (img.width <= 200 || img.width > 800)) return false;
         if (activeSizeFilter === "Large" && img.width <= 800) return false;
-        
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
-          return img.src.toLowerCase().includes(q) || img.alt.toLowerCase().includes(q);
-        }
-        return true;
-      });
+      }
+
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return img.src.toLowerCase().includes(q) || img.alt.toLowerCase().includes(q);
+      }
+      return true;
+    };
+
+    // Debounced re-render so a burst of image loads triggers a single grid
+    // reconcile instead of one per image.
+    let reconcileTimer = null;
+    const scheduleSizeReconcile = (slot) => {
+      if (reconcileTimer) clearTimeout(reconcileTimer);
+      reconcileTimer = setTimeout(() => {
+        reconcileTimer = null;
+        renderGrid(slot);
+      }, 250);
+    };
+
+    const renderGrid = (slot) => {
+      const filtered = imagesList.filter(matchesFilters);
 
       const listHTML = filtered.map(img => `
         <div class="img-card" style="background:#15151b; border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; position:relative;">
@@ -113,6 +132,18 @@ export   function setupExtractImages() {
           const resLabel = imgEl.parentElement.nextElementSibling.querySelector('.img-res');
           if (resLabel) {
             resLabel.textContent = `${imgEl.naturalWidth}x${imgEl.naturalHeight}`;
+          }
+          // Persist real dimensions back to the model so size filters work.
+          const entry = imagesList.find(im => im.src === imgEl.getAttribute("src"));
+          if (entry) {
+            const firstMeasure = entry.width === 0;
+            entry.width = imgEl.naturalWidth;
+            entry.height = imgEl.naturalHeight;
+            // If a size filter is active, reconcile the grid once dimensions
+            // become known so newly-measured images filter in/out correctly.
+            if (firstMeasure && activeSizeFilter !== "All") {
+              scheduleSizeReconcile(slot);
+            }
           }
         };
         if (imgEl.complete) {
@@ -232,14 +263,7 @@ export   function setupExtractImages() {
       const dlAllBtn = slot.querySelector("#extract-dl-all-btn");
       dlAllBtn.onclick = () => {
         showToast("Downloading filtered images...");
-        const filtered = imagesList.filter(img => {
-          if (activeTypeFilter !== "All" && img.type !== activeTypeFilter) return false;
-          if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            return img.src.toLowerCase().includes(q) || img.alt.toLowerCase().includes(q);
-          }
-          return true;
-        });
+        const filtered = imagesList.filter(matchesFilters);
         filtered.forEach((img, idx) => {
           setTimeout(() => {
             const ext = img.src.startsWith("data:image/svg+xml") ? "svg" : "png";

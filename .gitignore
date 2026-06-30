@@ -5,3 +5,6 @@ test*.js
 split-content.js
 fix-extract.js
 tail_content.txt
+
+# Store package artifact
+superdev-pro.zip

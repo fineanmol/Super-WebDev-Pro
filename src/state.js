@@ -27,6 +27,13 @@ export const state = {
   disabledStyles: new WeakMap(),
   disabledStyleValues: new WeakMap(),
 
+  // Font Changer: original page body font, restored on deactivate
+  originalBodyFont: undefined,
+
+  // Move Element: original inline transform per element (for accurate reset)
+  moveOriginalTransforms: new WeakMap(),
+  selectedElementForMove: null,
+
   // Undo stacks for various tools
   undoStacks: {
     textEdits: [],

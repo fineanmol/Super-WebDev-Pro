@@ -7,6 +7,12 @@ import { deactivateCurrentTool, trackListener } from '../core/tool-manager.js';
 import { formatElementSelector, getFirstFontFamily, hexToRgb, rgbToHsl, extractColor } from '../utils.js';
 
 export   function setupFontsChanger() {
+    // Remember the page's original body font so the tool can be fully undone
+    // when it is deactivated (handled in deactivateCurrentTool).
+    if (state.originalBodyFont === undefined) {
+      state.originalBodyFont = document.body.style.fontFamily || "";
+    }
+
     const fonts = [
       { name: "Roboto", sample: "Roboto Typography" },
       { name: "Inter", sample: "Inter Developer" },
@@ -42,13 +48,9 @@ export   function setupFontsChanger() {
         card.onclick = () => {
           const fontName = card.getAttribute("data-font");
           const linkId = `gfont-${fontName.toLowerCase().replace(/\s+/g, "-")}`;
-          if (!state.shadowRoot.getElementById(linkId)) {
-            const link = document.createElement("link");
-            link.id = linkId;
-            link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;
-            link.rel = "stylesheet";
-            state.shadowRoot.appendChild(link);
-            
+          // Inject the Google Fonts stylesheet into the page <head> (a sheet in
+          // the shadow root would not register @font-face for the document).
+          if (!document.getElementById(linkId)) {
             const pageLink = document.createElement("link");
             pageLink.id = linkId;
             pageLink.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;

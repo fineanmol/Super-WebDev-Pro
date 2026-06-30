@@ -1711,8 +1711,10 @@ export   function ensureHUD() {
   // Persistent Settings
 
 export   function loadPersistentSettings() {
-    chrome.storage.local.get(["sidebarPosition", "premium"], (res) => {
-      state.isPremium = res.premium !== false; // Default Pro
+    // All tools are free; isPremium is retained only for backward compatibility
+    // with any persisted state and always resolves to unlocked.
+    state.isPremium = true;
+    chrome.storage.local.get(["sidebarPosition"], (res) => {
       if (res.sidebarPosition === "left") {
         setSidebarPosition("left");
       } else {
@@ -1843,16 +1845,6 @@ export   function setupSidebarEvents() {
 
     tools.forEach(tool => {
       state.shadowRoot.getElementById(tool.btnId).addEventListener("click", () => {
-        // Handle premium lock
-        const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
-        if (premiumTools.includes(tool.id) && !state.isPremium) {
-          deactivateCurrentTool();
-          showPremiumLockedDrawer(tool.id);
-          state.activeTool = tool.id;
-          updateSidebarActiveBtn();
-          return;
-        }
-
         if (state.activeTool === tool.id) {
           const isOverlayTool = ["settings", "responsive-viewer"].includes(tool.id);
           if (!isOverlayTool && state.drawerEl && !state.drawerEl.classList.contains("visible")) {

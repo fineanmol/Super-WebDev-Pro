@@ -48,7 +48,6 @@ export   function renderExportDetailsInDrawer(element) {
 
     detailsSlot.style.display = "block";
 
-    const htmlCode = element.outerHTML;
     const computed = window.getComputedStyle(element);
     let cssText = `/* Exported Style rules for ${element.tagName.toLowerCase()} */\n.exported-element {\n`;
     
@@ -64,7 +63,14 @@ export   function renderExportDetailsInDrawer(element) {
     });
     cssText += `}\n`;
 
-    const htmlClean = htmlCode.replace(/ style="[^"]*"/, "").replace(element.tagName.toLowerCase(), `${element.tagName.toLowerCase()} class="exported-element"`);
+    // Build clean markup by cloning the node: strip the inline style attribute
+    // and tag the root with our exported-element class. String replacement on
+    // outerHTML is unreliable (it can hit attribute values or child text), so
+    // we operate on a real DOM clone instead.
+    const clone = element.cloneNode(true);
+    clone.removeAttribute("style");
+    clone.setAttribute("class", "exported-element");
+    const htmlClean = clone.outerHTML;
 
     detailsSlot.innerHTML = `
       <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top:12px;">Export webpage element snippet:</div>

@@ -39,6 +39,11 @@
         rulerCanvas: null,
         disabledStyles: /* @__PURE__ */ new WeakMap(),
         disabledStyleValues: /* @__PURE__ */ new WeakMap(),
+        // Font Changer: original page body font, restored on deactivate
+        originalBodyFont: void 0,
+        // Move Element: original inline transform per element (for accurate reset)
+        moveOriginalTransforms: /* @__PURE__ */ new WeakMap(),
+        selectedElementForMove: null,
         // Undo stacks for various tools
         undoStacks: {
           textEdits: [],
@@ -132,10 +137,10 @@
     state.highlightOverlay.style.display = "block";
     if (customColor) {
       state.highlightOverlay.style.borderColor = customColor;
-      if (typeof customColor === "string" && customColor.startsWith("var(")) {
-        state.highlightOverlay.style.backgroundColor = "rgba(184, 163, 252, 0.08)";
+      if (/^#[0-9a-fA-F]{6}$/.test(customColor)) {
+        state.highlightOverlay.style.backgroundColor = `${customColor}1a`;
       } else {
-        state.highlightOverlay.style.backgroundColor = `${customColor}0e`;
+        state.highlightOverlay.style.backgroundColor = "rgba(184, 163, 252, 0.08)";
       }
       state.highlightLabel.style.backgroundColor = customColor;
     } else {
@@ -157,7 +162,7 @@
     }
   }
   function isHUDElement(el) {
-    if (!el) return false;
+    if (!el || !state.hostEl) return false;
     if (el === state.hostEl || state.hostEl.contains(el)) return true;
     return false;
   }
@@ -165,6 +170,8 @@
     if (state.highlightOverlay) {
       state.highlightOverlay.style.display = "none";
       state.highlightOverlay.classList.remove("show-guides");
+    }
+    if (state.highlightLabel) {
       state.highlightLabel.style.display = "none";
     }
     if (state.inspectorTooltip) {
@@ -337,21 +344,6 @@
     if (state.drawerEl) {
       state.drawerEl.classList.remove("visible");
     }
-  }
-  function showPremiumLockedDrawer(toolId) {
-    const html = `
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:20px;">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="1.5" style="margin-bottom:16px;">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-        </svg>
-        <h3 style="font-size:16px; font-weight:600; color:#fff; margin:0 0 8px 0;">Premium Feature</h3>
-        <p style="font-size:12px; color:var(--text-secondary); margin:0 0 24px 0;">
-          The <b>${toolId}</b> tool requires a SuperDev Pro license to unlock.
-        </p>
-        <button class="hud-btn primary" style="width:100%;">Unlock Pro</button>
-      </div>
-    `;
-    openDrawer("Feature Locked", "Pro license required", html);
   }
   var init_drawer = __esm({
     "src/ui/drawer.js"() {
@@ -829,8 +821,6 @@
             const cached = valuesMap[propName];
             if (cached && cached.inline) {
               el.style.setProperty(propName, cached.inline, "important");
-            } else {
-              el.style.removeProperty(propName);
             }
             delete valuesMap[propName];
           } else {
@@ -839,7 +829,7 @@
               inline: el.style.getPropertyValue(propName),
               computed: propVal
             };
-            el.style.setProperty(propName, "unset", "important");
+            el.style.removeProperty(propName);
           }
           renderPropertiesList();
           const newRect = el.getBoundingClientRect();
@@ -855,14 +845,17 @@
         if (propType === "slider") {
           const slider = row.querySelector(".prop-slider");
           const numBox = row.querySelector(".prop-slider-num-box");
-          const unit = sliderUnit;
+          const parsed = parseValAndUnit(propVal);
+          const unit = parsed.unit || sliderUnit;
           slider.oninput = () => {
             numBox.value = slider.value;
             updateStyleValue(slider.value + unit);
           };
           numBox.oninput = () => {
-            slider.value = numBox.value;
-            updateStyleValue(numBox.value + unit);
+            const n = parseFloat(numBox.value);
+            if (isNaN(n)) return;
+            slider.value = n;
+            updateStyleValue(n + unit);
           };
         } else if (propType === "select") {
           const select = row.querySelector("select");
@@ -901,10 +894,11 @@
       const valuesMap2 = state.disabledStyleValues.get(el) || {};
       propNames.forEach((propName) => {
         if (disabledSet2.has(propName)) {
-          const cachedVal = valuesMap2[propName] || computed.getPropertyValue(propName) || computed[propName] || "";
+          const cached = valuesMap2[propName];
+          const cachedVal = cached && (cached.inline || cached.computed) || computed.getPropertyValue(propName) || "";
           lines.push(`  <span style="color: rgba(255,255,255,0.25); font-style: italic;">/* ${propName}: ${cachedVal}; */</span>`);
         } else {
-          const val = el.style[propName] || computed.getPropertyValue(propName) || computed[propName];
+          const val = el.style.getPropertyValue(propName) || computed.getPropertyValue(propName);
           if (val) {
             const colorVal = extractColor(propName, val);
             let swatch = "";
@@ -1029,6 +1023,9 @@ ${lines.join("\n")}
 
   // src/features/fonts-changer.js
   function setupFontsChanger() {
+    if (state.originalBodyFont === void 0) {
+      state.originalBodyFont = document.body.style.fontFamily || "";
+    }
     const fonts = [
       { name: "Roboto", sample: "Roboto Typography" },
       { name: "Inter", sample: "Inter Developer" },
@@ -1061,12 +1058,7 @@ ${lines.join("\n")}
         card.onclick = () => {
           const fontName = card.getAttribute("data-font");
           const linkId = `gfont-${fontName.toLowerCase().replace(/\s+/g, "-")}`;
-          if (!state.shadowRoot.getElementById(linkId)) {
-            const link = document.createElement("link");
-            link.id = linkId;
-            link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;
-            link.rel = "stylesheet";
-            state.shadowRoot.appendChild(link);
+          if (!document.getElementById(linkId)) {
             const pageLink = document.createElement("link");
             pageLink.id = linkId;
             pageLink.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, "+")}:wght@400;700&display=swap`;
@@ -1185,6 +1177,7 @@ ${lines.join("\n")}
             navigator.clipboard.writeText(res.sRGBHex.toUpperCase());
             showToast(`Copied picked color: ${res.sRGBHex.toUpperCase()}`);
             drawColorPickerDrawer(res.sRGBHex);
+          }).catch(() => {
           });
         };
         slot.querySelectorAll(".cp-val-copy").forEach((btn) => {
@@ -1332,18 +1325,29 @@ ${lines.join("\n")}
     let activeTypeFilter = "All";
     let activeSizeFilter = "All";
     let searchQuery = "";
-    const renderGrid = (slot) => {
-      const filtered = imagesList.filter((img) => {
-        if (activeTypeFilter !== "All" && img.type !== activeTypeFilter) return false;
+    const matchesFilters = (img) => {
+      if (activeTypeFilter !== "All" && img.type !== activeTypeFilter) return false;
+      if (activeSizeFilter !== "All" && img.width > 0) {
         if (activeSizeFilter === "Small" && img.width > 200) return false;
         if (activeSizeFilter === "Medium" && (img.width <= 200 || img.width > 800)) return false;
         if (activeSizeFilter === "Large" && img.width <= 800) return false;
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
-          return img.src.toLowerCase().includes(q) || img.alt.toLowerCase().includes(q);
-        }
-        return true;
-      });
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return img.src.toLowerCase().includes(q) || img.alt.toLowerCase().includes(q);
+      }
+      return true;
+    };
+    let reconcileTimer = null;
+    const scheduleSizeReconcile = (slot) => {
+      if (reconcileTimer) clearTimeout(reconcileTimer);
+      reconcileTimer = setTimeout(() => {
+        reconcileTimer = null;
+        renderGrid(slot);
+      }, 250);
+    };
+    const renderGrid = (slot) => {
+      const filtered = imagesList.filter(matchesFilters);
       const listHTML = filtered.map((img) => `
         <div class="img-card" style="background:#15151b; border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; position:relative;">
           <!-- Checkerboard background pattern -->
@@ -1375,6 +1379,15 @@ ${lines.join("\n")}
           const resLabel = imgEl.parentElement.nextElementSibling.querySelector(".img-res");
           if (resLabel) {
             resLabel.textContent = `${imgEl.naturalWidth}x${imgEl.naturalHeight}`;
+          }
+          const entry = imagesList.find((im) => im.src === imgEl.getAttribute("src"));
+          if (entry) {
+            const firstMeasure = entry.width === 0;
+            entry.width = imgEl.naturalWidth;
+            entry.height = imgEl.naturalHeight;
+            if (firstMeasure && activeSizeFilter !== "All") {
+              scheduleSizeReconcile(slot);
+            }
           }
         };
         if (imgEl.complete) {
@@ -1481,14 +1494,7 @@ ${lines.join("\n")}
       const dlAllBtn = slot.querySelector("#extract-dl-all-btn");
       dlAllBtn.onclick = () => {
         showToast("Downloading filtered images...");
-        const filtered = imagesList.filter((img) => {
-          if (activeTypeFilter !== "All" && img.type !== activeTypeFilter) return false;
-          if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            return img.src.toLowerCase().includes(q) || img.alt.toLowerCase().includes(q);
-          }
-          return true;
-        });
+        const filtered = imagesList.filter(matchesFilters);
         filtered.forEach((img, idx) => {
           setTimeout(() => {
             const ext = img.src.startsWith("data:image/svg+xml") ? "svg" : "png";
@@ -1548,6 +1554,7 @@ ${lines.join("\n")}
             const record = state.undoStacks.movedElements[idx];
             if (record) {
               record.element.style.transform = record.oldTransform;
+              if (state.moveOriginalTransforms) state.moveOriginalTransforms.delete(record.element);
               state.undoStacks.movedElements.splice(idx, 1);
               showToast("Restored translation position");
               drawMoveDrawer();
@@ -1572,28 +1579,47 @@ ${lines.join("\n")}
       e.preventDefault();
       e.stopPropagation();
       if (state.selectedElementForMove) {
+        recordMove(state.selectedElementForMove);
         state.selectedElementForMove = null;
         hideHighlight();
         showToast("Element released");
       } else {
-        state.selectedElementForMove = e.target;
+        selectForMove(e.target);
         const rect = e.target.getBoundingClientRect();
         showHighlight(rect, `${e.target.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
       }
     }, true);
+    function getTranslate(el) {
+      const t = window.getComputedStyle(el).transform;
+      if (!t || t === "none") return { x: 0, y: 0 };
+      try {
+        const m = new DOMMatrix(t);
+        return { x: m.m41, y: m.m42 };
+      } catch (err) {
+        return { x: 0, y: 0 };
+      }
+    }
+    function selectForMove(el) {
+      state.selectedElementForMove = el;
+      if (!state.moveOriginalTransforms) state.moveOriginalTransforms = /* @__PURE__ */ new WeakMap();
+      if (!state.moveOriginalTransforms.has(el)) {
+        state.moveOriginalTransforms.set(el, el.style.transform || "");
+      }
+    }
+    function recordMove(el) {
+      if (!el || !state.moveOriginalTransforms) return;
+      const original = state.moveOriginalTransforms.get(el) || "";
+      const existing = state.undoStacks.movedElements.find((m) => m.element === el);
+      if (!existing) {
+        state.undoStacks.movedElements.push({ element: el, oldTransform: original });
+        drawMoveDrawer();
+      }
+    }
     trackListener(document, "keydown", (e) => {
       if (!state.selectedElementForMove) return;
       const el = state.selectedElementForMove;
-      const style = window.getComputedStyle(el);
-      let tx = 0, ty = 0;
-      const matrix = style.transform || style.webkitTransform;
-      if (matrix && matrix !== "none") {
-        const parts = matrix.split(", ");
-        if (parts.length >= 6) {
-          tx = parseFloat(parts[4]);
-          ty = parseFloat(parts[5]);
-        }
-      }
+      const { x: curX, y: curY } = getTranslate(el);
+      let tx = curX, ty = curY;
       const step = e.shiftKey ? 10 : 1;
       let handled = false;
       switch (e.key) {
@@ -1614,6 +1640,7 @@ ${lines.join("\n")}
           handled = true;
           break;
         case "Escape":
+          recordMove(el);
           state.selectedElementForMove = null;
           hideHighlight();
           showToast("Move ended");
@@ -1621,15 +1648,11 @@ ${lines.join("\n")}
       }
       if (handled) {
         e.preventDefault();
-        state.undoStacks.movedElements.push({ element: el, oldTransform: el.style.transform });
         el.style.transform = `translate(${tx}px, ${ty}px)`;
-        drawMoveDrawer();
-        setTimeout(() => {
-          const rect = el.getBoundingClientRect();
-          showHighlight(rect, `${el.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
-        }, 30);
+        const rect = el.getBoundingClientRect();
+        showHighlight(rect, `${el.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
       }
-    });
+    }, true);
     let isDragging = false;
     let dragStartX = 0, dragStartY = 0;
     let initialTx = 0, initialTy = 0;
@@ -1639,18 +1662,9 @@ ${lines.join("\n")}
       isDragging = true;
       dragStartX = e.clientX;
       dragStartY = e.clientY;
-      const style = window.getComputedStyle(state.selectedElementForMove);
-      const matrix = style.transform || style.webkitTransform;
-      initialTx = 0;
-      initialTy = 0;
-      if (matrix && matrix !== "none") {
-        const parts = matrix.split(", ");
-        if (parts.length >= 6) {
-          initialTx = parseFloat(parts[4]);
-          initialTy = parseFloat(parts[5]);
-        }
-      }
-      state.moveStartPos = state.selectedElementForMove.style.transform;
+      const { x, y } = getTranslate(state.selectedElementForMove);
+      initialTx = x;
+      initialTy = y;
       e.preventDefault();
     }, true);
     trackListener(document, "mousemove", (e) => {
@@ -1664,8 +1678,7 @@ ${lines.join("\n")}
     trackListener(document, "mouseup", () => {
       if (isDragging) {
         isDragging = false;
-        state.undoStacks.movedElements.push({ element: state.selectedElementForMove, oldTransform: state.moveStartPos });
-        drawMoveDrawer();
+        recordMove(state.selectedElementForMove);
       }
     }, true);
   }
@@ -1791,7 +1804,6 @@ ${lines.join("\n")}
     const detailsSlot = state.shadowRoot.getElementById("export-element-details");
     if (!detailsSlot) return;
     detailsSlot.style.display = "block";
-    const htmlCode = element.outerHTML;
     const computed = window.getComputedStyle(element);
     let cssText = `/* Exported Style rules for ${element.tagName.toLowerCase()} */
 .exported-element {
@@ -1821,7 +1833,10 @@ ${lines.join("\n")}
     });
     cssText += `}
 `;
-    const htmlClean = htmlCode.replace(/ style="[^"]*"/, "").replace(element.tagName.toLowerCase(), `${element.tagName.toLowerCase()} class="exported-element"`);
+    const clone = element.cloneNode(true);
+    clone.removeAttribute("style");
+    clone.setAttribute("class", "exported-element");
+    const htmlClean = clone.outerHTML;
     detailsSlot.innerHTML = `
       <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top:12px;">Export webpage element snippet:</div>
       <div style="display:flex; flex-direction:column; gap:12px;">
@@ -2553,486 +2568,123 @@ ${lines.join("\n")}
   });
 
   // src/features/settings.js
-  function setupSettings() {
-    let modal = state.shadowRoot.getElementById("settings-modal-overlay");
-    if (!modal) {
-      let initPaneSettings2 = function(p, tabLabel) {
-        if (tabLabel === "Account") {
-          initAccountPane(p);
-          return;
-        }
-        if (tabLabel === "Appearance") {
-          const deactBtn = p.querySelector("#settings-deactivate-btn");
-          if (deactBtn) {
-            deactBtn.onclick = () => {
-              Promise.resolve().then(() => (init_hud(), hud_exports)).then((m) => m.destroyHUD());
-            };
-          }
-        }
-        const elements = p.querySelectorAll("[data-setting]");
-        if (elements.length === 0) return;
-        const keys = Array.from(elements).map((el) => el.getAttribute("data-setting"));
-        chrome.storage.local.get(keys, (res) => {
-          elements.forEach((el) => {
-            const key = el.getAttribute("data-setting");
-            const savedVal = res[key];
-            const defaultVal = defaultSettings[key];
-            const currentVal = savedVal !== void 0 ? savedVal : defaultVal;
-            if (el.type === "checkbox") {
-              el.checked = !!currentVal;
-            } else if (el.tagName === "SELECT") {
-              el.value = currentVal;
-            }
-            el.onchange = (e) => {
-              const val = el.type === "checkbox" ? el.checked : el.value;
-              chrome.storage.local.set({ [key]: val }, () => {
-                showToast(`Saved setting: ${key.replace(/([A-Z])/g, " $1")}`);
-                if (key === "sidebarPosition") {
-                  Promise.resolve().then(() => (init_hud(), hud_exports)).then((m) => m.setSidebarPosition(val));
-                }
-              });
-            };
-          });
-        });
-      }, initAccountPane = function(p) {
-        const statusContainer = p.querySelector("#license-status-container");
-        const input = p.querySelector("#settings-license-input");
-        const btn = p.querySelector("#settings-license-btn");
-        function renderStatus() {
-          chrome.storage.local.get(["premium", "licenseKey"], (res) => {
-            const isPro = res.premium !== false;
-            const key = res.licenseKey || "";
-            input.value = key;
-            if (isPro) {
-              statusContainer.innerHTML = `
-                <div>
-                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
-                  <div style="font-size: 12px; color: var(--text-secondary);">
-                    <span style="color: #4ade80; font-weight: 600;">SuperDev Pro Active</span> \xB7 Lifetime License \xB7 1/3 devices
-                  </div>
-                </div>
-              `;
-              btn.textContent = "Deactivate";
-              btn.style.background = "rgba(239, 68, 68, 0.2)";
-              btn.style.border = "1px solid rgba(239, 68, 68, 0.4)";
-              btn.style.color = "#ef4444";
-            } else {
-              statusContainer.innerHTML = `
-                <div>
-                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
-                  <div style="font-size: 12px; color: var(--text-secondary);">
-                    <span style="color: var(--text-secondary); font-weight: 500;">Free Version (Limited Features)</span>
-                  </div>
-                </div>
-              `;
-              btn.textContent = "Activate";
-              btn.style.background = "var(--accent-purple)";
-              btn.style.border = "none";
-              btn.style.color = "#000";
-            }
-          });
-        }
-        btn.onclick = () => {
-          chrome.storage.local.get(["premium"], (res) => {
-            const isPro = res.premium !== false;
-            if (isPro) {
-              chrome.storage.local.set({ premium: false, licenseKey: "" }, () => {
-                showToast("Pro license deactivated.");
-                state.isPremium = false;
-                renderStatus();
-              });
-            } else {
-              const key = input.value.trim().toUpperCase();
-              if (key === "WEBDEVPRO2026") {
-                chrome.storage.local.set({ premium: true, licenseKey: key }, () => {
-                  showToast("SuperDev Pro activated successfully!");
-                  state.isPremium = true;
-                  renderStatus();
-                });
-              } else {
-                showToast("Invalid key. Try WEBDEVPRO2026");
-              }
-            }
-          });
+  function initPaneSettings(p, tabId) {
+    if (tabId === "about") {
+      return;
+    }
+    if (tabId === "appearance") {
+      const deactBtn = p.querySelector("#settings-deactivate-btn");
+      if (deactBtn) {
+        deactBtn.onclick = () => {
+          Promise.resolve().then(() => (init_hud(), hud_exports)).then((m) => m.destroyHUD());
         };
-        renderStatus();
-      };
-      modal = document.createElement("div");
-      modal.id = "settings-modal-overlay";
-      modal.style.position = "fixed";
-      modal.style.inset = "0";
-      modal.style.zIndex = "2147483647";
-      modal.style.background = "rgba(10, 10, 15, 0.95)";
-      modal.style.display = "flex";
-      modal.style.flexDirection = "column";
-      modal.style.fontFamily = "var(--font-primary)";
-      modal.style.color = "var(--text-primary)";
-      modal.style.backdropFilter = "blur(12px)";
-      modal.innerHTML = `
-        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.08);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; opacity:0.8;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          <span style="font-size: 16px; font-weight: 600;">Settings</span>
-          <div style="width:6px; height:6px; background:#4ade80; border-radius:50%; margin-left:8px; box-shadow:0 0 8px #4ade80;"></div>
-          <button id="settings-close-btn" style="margin-left:auto; background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:4px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        <div style="display: flex; flex: 1; overflow: hidden;">
-          <div style="width: 250px; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; overflow-y: auto; padding: 16px 0;">
-            <div style="padding: 0 20px; font-size: 10px; font-weight: 700; color: var(--text-secondary); letter-spacing: 1px; margin-bottom: 12px; display:flex; align-items:center; gap:6px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-              SETTINGS
-            </div>
-            
-            <button class="settings-nav-btn active" style="background:rgba(255,255,255,0.05); color:#fff; border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              Account
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-              Appearance
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-teal)" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-              Screenshot
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-              Color Picker
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              Webpage \u2192 Markdown
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15v-6h3c1.66 0 3 1.34 3 3s-1.34 3-3 3H9z"></path></svg>
-              Save as PDF
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              Export Element
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
-              AI Assistant
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              CSS Inspector
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Extract Images
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
-              Delete Element
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              JSON Formatter
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-              Tab Manager
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-              Reader Mode
-            </button>
-            <button class="settings-nav-btn" style="background:none; color:var(--text-secondary); border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              World Clock
-            </button>
-          </div>
-          <div id="settings-content-pane" style="flex: 1; padding: 40px; overflow-y: auto; display:flex; flex-direction:column; gap:24px;">
-            <!-- Content injects here -->
-          </div>
-        </div>
-      `;
-      state.shadowRoot.appendChild(modal);
-      const defaultSettings = {
-        licenseKey: "",
-        theme: "dark",
-        sidebarPosition: "right",
-        colorFormat: "hex",
-        colorAutoCopy: true,
-        extractBgImages: true,
-        extractMetaTags: true,
-        extractZip: false,
-        screenshotFormat: "png",
-        screenshotAutoDownload: true,
-        markdownImages: true,
-        markdownTables: true,
-        pdfStripStyle: true,
-        exportInlineCSS: true,
-        exportPrettier: false,
-        aiModel: "gpt-4o",
-        cssHighlightBoxModel: true,
-        deleteConfirm: true,
-        jsonIndent: "2",
-        tabSuspend: true,
-        readerFont: "serif",
-        clock24h: true
-      };
-      const contentPanes2 = {
-        "Account": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Account</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Manage your SuperDev Pro license key.</p>
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap:16px;">
-            <div id="license-status-container">
-              <!-- Dynamically loaded -->
-            </div>
-            <div style="display:flex; gap:10px;">
-              <input type="text" id="settings-license-input" placeholder="Enter License Key (e.g. WEBDEVPRO2026)" style="flex:1; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px 12px; color:#fff; font-size:12px; outline:none;" />
-              <button id="settings-license-btn" style="border: none; border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;">
-                Verify
-              </button>
-            </div>
-          </div>
-        `,
-        "Appearance": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Appearance</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Customize the look and feel of SuperDev Pro.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
-              <div>
-                <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Theme</div>
-                <div style="font-size:12px; color:var(--text-secondary);">Choose your preferred color scheme.</div>
-              </div>
-              <select data-setting="theme" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option value="dark">Dark Mode (Default)</option>
-                <option value="light">Light Mode</option>
-                <option value="system">System Auto</option>
-              </select>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
-              <div>
-                <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Sidebar Position</div>
-                <div style="font-size:12px; color:var(--text-secondary);">Default docking side for the main HUD.</div>
-              </div>
-              <select data-setting="sidebarPosition" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option value="right">Right (Default)</option>
-                <option value="left">Left</option>
-              </select>
-            </div>
-            
-            <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.08);">
-              <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:#ef4444;">Deactivate Extension</div>
-              <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Completely unload WebDev Pro from this webpage. Press Cmd+Shift+E or click the extension icon to restart it.</div>
-              <button id="settings-deactivate-btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; border-radius:6px; padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer; transition:background 0.2s;">
-                Turn Off WebDev Pro
-              </button>
-            </div>
-          </div>
-        `,
-        "Color Picker": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Color Picker Settings</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure how colors are extracted and copied.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
-              <div>
-                <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Default Color Format</div>
-                <div style="font-size:12px; color:var(--text-secondary);">Format copied to clipboard on click.</div>
-              </div>
-              <select data-setting="colorFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option value="hex">HEX (#FFFFFF)</option>
-                <option value="rgb">RGB (rgb(255,255,255))</option>
-                <option value="hsl">HSL (hsl(0,0%,100%))</option>
-              </select>
-            </div>
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="colorAutoCopy" /> Auto-copy to clipboard on click
-            </label>
-          </div>
-        `,
-        "Extract Images": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Extract Images</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure media scraping defaults.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="extractBgImages" /> Capture background-image CSS properties
-            </label>
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="extractMetaTags" /> Capture Favicons & OG Meta tags
-            </label>
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="extractZip" /> Zip downloads automatically
-            </label>
-          </div>
-        `,
-        "Screenshot": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Screenshot Settings</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Manage image capture quality and format.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
-              <div>
-                <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Format</div>
-              </div>
-              <select data-setting="screenshotFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option value="png">PNG (High Quality)</option>
-                <option value="jpeg">JPEG (Smaller Size)</option>
-                <option value="webp">WebP</option>
-              </select>
-            </div>
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="screenshotAutoDownload" /> Auto-download on capture
-            </label>
-          </div>
-        `,
-        "Webpage \u2192 Markdown": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Webpage \u2192 Markdown</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure markdown extraction formatting.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="markdownImages" /> Include images as markdown links
-            </label>
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="markdownTables" /> Preserve table structures
-            </label>
-          </div>
-        `,
-        "Save as PDF": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Save as PDF</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure PDF print properties.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="pdfStripStyle" /> Strip unnecessary styling (Reader view)
-            </label>
-          </div>
-        `,
-        "Export Element": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Export Element</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure element bundle extraction.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="exportInlineCSS" /> Inline CSS into style tags
-            </label>
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="exportPrettier" /> Pre-format using Prettier
-            </label>
-          </div>
-        `,
-        "AI Assistant": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">AI Assistant</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure AI integration features.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
-              <div>
-                <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Language Model</div>
-              </div>
-              <select data-setting="aiModel" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option value="gpt-4o">GPT-4o (Premium)</option>
-                <option value="claude-3-5">Claude 3.5 Sonnet</option>
-              </select>
-            </div>
-          </div>
-        `,
-        "CSS Inspector": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">CSS Inspector</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure layout overlays and property formats.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="cssHighlightBoxModel" /> Highlight element box-model on hover
-            </label>
-          </div>
-        `,
-        "Delete Element": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Delete Element</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configuration for element deletion tool.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="deleteConfirm" /> Require confirmation for container nodes
-            </label>
-          </div>
-        `,
-        "JSON Formatter": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">JSON Formatter</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure indentation and auto-formatting.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
-              <div>
-                <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Indentation Space</div>
-              </div>
-              <select data-setting="jsonIndent" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option value="2">2 Spaces</option>
-                <option value="4">4 Spaces</option>
-                <option value="tabs">Tabs</option>
-              </select>
-            </div>
-          </div>
-        `,
-        "Tab Manager": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Tab Manager</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure tab suspended and memory management.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="tabSuspend" /> Automatically suspend inactive tabs after 15 mins
-            </label>
-          </div>
-        `,
-        "Reader Mode": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Reader Mode</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure reading typography and layout.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
-              <div>
-                <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Font Preference</div>
-              </div>
-              <select data-setting="readerFont" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
-                <option value="serif">Serif (Georgia)</option>
-                <option value="sans">Sans-Serif (Inter)</option>
-              </select>
-            </div>
-          </div>
-        `,
-        "World Clock": `
-          <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">World Clock</h2>
-          <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure timezone defaults.</p>
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" data-setting="clock24h" /> Use 24-hour time format
-            </label>
-          </div>
-        `
-      };
-      const defaultContent = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary); opacity:0.5;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:16px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          <div style="font-size:16px; font-weight:500;">Settings panel under construction</div>
-          <div style="font-size:12px; margin-top:8px;">Detailed configuration options coming soon.</div>
-        </div>
-      `;
-      const pane = modal.querySelector("#settings-content-pane");
-      pane.innerHTML = contentPanes2["Account"];
-      initPaneSettings2(pane, "Account");
-      const navBtns = modal.querySelectorAll(".settings-nav-btn");
-      navBtns.forEach((btn) => {
-        btn.onclick = () => {
-          navBtns.forEach((b) => {
-            b.classList.remove("active");
-            b.style.background = "none";
-            b.style.color = "var(--text-secondary)";
+      }
+    }
+    const elements = p.querySelectorAll("[data-setting]");
+    if (elements.length === 0) return;
+    const keys = Array.from(elements).map((el) => el.getAttribute("data-setting"));
+    chrome.storage.local.get(keys, (res) => {
+      elements.forEach((el) => {
+        const key = el.getAttribute("data-setting");
+        const savedVal = res[key];
+        const defaultVal = defaultSettings[key];
+        const currentVal = savedVal !== void 0 ? savedVal : defaultVal;
+        if (el.type === "checkbox") {
+          el.checked = !!currentVal;
+        } else if (el.tagName === "SELECT") {
+          el.value = currentVal;
+        }
+        el.onchange = () => {
+          const val = el.type === "checkbox" ? el.checked : el.value;
+          chrome.storage.local.set({ [key]: val }, () => {
+            showToast(`Saved setting: ${key.replace(/([A-Z])/g, " $1")}`);
+            if (key === "sidebarPosition") {
+              Promise.resolve().then(() => (init_hud(), hud_exports)).then((m) => m.setSidebarPosition(val));
+            }
           });
-          btn.classList.add("active");
-          btn.style.background = "rgba(255,255,255,0.05)";
-          btn.style.color = "#fff";
-          const label = btn.textContent.trim();
-          pane.innerHTML = contentPanes2[label] || defaultContent.replace("Settings panel", label + " settings");
-          initPaneSettings2(pane, label);
         };
       });
-      modal.querySelector("#settings-close-btn").onclick = () => {
-        modal.style.display = "none";
-        deactivateCurrentTool();
-      };
-    } else {
-      modal.style.display = "flex";
-      const pane = modal.querySelector("#settings-content-pane");
-      pane.innerHTML = contentPanes["Account"];
-      initPaneSettings(pane, "Account");
-    }
+    });
   }
+  function renderPane(modal, tabId) {
+    const pane = modal.querySelector("#settings-content-pane");
+    pane.innerHTML = contentPanes[tabId] || defaultContent;
+    initPaneSettings(pane, tabId);
+  }
+  function setupSettings() {
+    let modal = state.shadowRoot.getElementById("settings-modal-overlay");
+    if (modal) {
+      modal.style.display = "flex";
+      const navBtns2 = modal.querySelectorAll(".settings-nav-btn");
+      navBtns2.forEach((b) => {
+        const isFirst = b.getAttribute("data-tab") === "about";
+        b.classList.toggle("active", isFirst);
+        b.style.background = isFirst ? "rgba(255,255,255,0.05)" : "none";
+        b.style.color = isFirst ? "#fff" : "var(--text-secondary)";
+      });
+      renderPane(modal, "about");
+      return;
+    }
+    modal = document.createElement("div");
+    modal.id = "settings-modal-overlay";
+    modal.style.position = "fixed";
+    modal.style.inset = "0";
+    modal.style.zIndex = "2147483647";
+    modal.style.background = "rgba(10, 10, 15, 0.95)";
+    modal.style.display = "flex";
+    modal.style.flexDirection = "column";
+    modal.style.fontFamily = "var(--font-primary)";
+    modal.style.color = "var(--text-primary)";
+    modal.style.backdropFilter = "blur(12px)";
+    const navHTML = NAV_ITEMS.map((item, i) => `
+      <button class="settings-nav-btn ${i === 0 ? "active" : ""}" data-tab="${item.id}" style="background:${i === 0 ? "rgba(255,255,255,0.05)" : "none"}; color:${i === 0 ? "#fff" : "var(--text-secondary)"}; border:none; padding:10px 20px; text-align:left; font-size:13px; font-weight:500; display:flex; align-items:center; gap:12px; cursor:pointer;">
+        ${item.icon}
+        ${item.label}
+      </button>
+    `).join("");
+    modal.innerHTML = `
+      <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; opacity:0.8;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span style="font-size: 16px; font-weight: 600;">Settings</span>
+        <div style="width:6px; height:6px; background:#4ade80; border-radius:50%; margin-left:8px; box-shadow:0 0 8px #4ade80;"></div>
+        <button id="settings-close-btn" style="margin-left:auto; background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:4px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div style="display: flex; flex: 1; overflow: hidden;">
+        <div style="width: 250px; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; overflow-y: auto; padding: 16px 0;">
+          <div style="padding: 0 20px; font-size: 10px; font-weight: 700; color: var(--text-secondary); letter-spacing: 1px; margin-bottom: 12px;">
+            SETTINGS
+          </div>
+          ${navHTML}
+        </div>
+        <div id="settings-content-pane" style="flex: 1; padding: 40px; overflow-y: auto; display:flex; flex-direction:column; gap:24px;">
+          <!-- Content injects here -->
+        </div>
+      </div>
+    `;
+    state.shadowRoot.appendChild(modal);
+    renderPane(modal, "about");
+    const navBtns = modal.querySelectorAll(".settings-nav-btn");
+    navBtns.forEach((btn) => {
+      btn.onclick = () => {
+        navBtns.forEach((b) => {
+          b.classList.remove("active");
+          b.style.background = "none";
+          b.style.color = "var(--text-secondary)";
+        });
+        btn.classList.add("active");
+        btn.style.background = "rgba(255,255,255,0.05)";
+        btn.style.color = "#fff";
+        renderPane(modal, btn.getAttribute("data-tab"));
+      };
+    });
+    modal.querySelector("#settings-close-btn").onclick = () => {
+      modal.style.display = "none";
+      deactivateCurrentTool();
+    };
+  }
+  var defaultSettings, contentPanes, defaultContent, NAV_ITEMS;
   var init_settings = __esm({
     "src/features/settings.js"() {
       init_state();
@@ -3042,6 +2694,155 @@ ${lines.join("\n")}
       init_highlight();
       init_tool_manager();
       init_utils();
+      defaultSettings = {
+        sidebarPosition: "right",
+        colorFormat: "hex",
+        colorAutoCopy: true,
+        extractBgImages: true,
+        extractMetaTags: true,
+        screenshotFormat: "png",
+        screenshotAutoDownload: true,
+        exportInlineCSS: true,
+        cssHighlightBoxModel: true,
+        deleteConfirm: true
+      };
+      contentPanes = {
+        "about": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">About</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">SuperDev Pro \u2014 an all-in-one browser developer toolkit.</p>
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap:12px;">
+      <div>
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #fff;">Status</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">
+          <span style="color: #4ade80; font-weight: 600;">All tools unlocked</span> \xB7 Free \xB7 v1.0.0
+        </div>
+      </div>
+      <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+        Every tool \u2014 CSS inspection, color tools, screenshots, exports, audits and
+        more \u2014 is available at no cost. No account or license key is required.
+      </div>
+    </div>
+  `,
+        "appearance": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Appearance</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Customize the look and feel of SuperDev Pro.</p>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
+        <div>
+          <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Sidebar Position</div>
+          <div style="font-size:12px; color:var(--text-secondary);">Default docking side for the main HUD.</div>
+        </div>
+        <select data-setting="sidebarPosition" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+          <option value="right">Right (Default)</option>
+          <option value="left">Left</option>
+        </select>
+      </div>
+
+      <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.08);">
+        <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:#ef4444;">Deactivate Extension</div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Completely unload WebDev Pro from this webpage. Press Cmd+Shift+E or click the extension icon to restart it.</div>
+        <button id="settings-deactivate-btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; border-radius:6px; padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer; transition:background 0.2s;">
+          Turn Off WebDev Pro
+        </button>
+      </div>
+    </div>
+  `,
+        "color-picker": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Color Picker Settings</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure how colors are extracted and copied.</p>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
+        <div>
+          <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Default Color Format</div>
+          <div style="font-size:12px; color:var(--text-secondary);">Format copied to clipboard on click.</div>
+        </div>
+        <select data-setting="colorFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+          <option value="hex">HEX (#FFFFFF)</option>
+          <option value="rgb">RGB (rgb(255,255,255))</option>
+          <option value="hsl">HSL (hsl(0,0%,100%))</option>
+        </select>
+      </div>
+      <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" data-setting="colorAutoCopy" /> Auto-copy to clipboard on click
+      </label>
+    </div>
+  `,
+        "extract-images": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Extract Images</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure media scraping defaults.</p>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" data-setting="extractBgImages" /> Capture background-image CSS properties
+      </label>
+      <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" data-setting="extractMetaTags" /> Capture Favicons & OG Meta tags
+      </label>
+    </div>
+  `,
+        "screenshot": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Screenshot Settings</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Manage image capture quality and format.</p>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:16px;">
+        <div>
+          <div style="font-weight:500; font-size:14px; margin-bottom:4px;">Format</div>
+        </div>
+        <select data-setting="screenshotFormat" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; padding:6px 12px; outline:none;">
+          <option value="png">PNG (High Quality)</option>
+          <option value="jpeg">JPEG (Smaller Size)</option>
+          <option value="webp">WebP</option>
+        </select>
+      </div>
+      <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" data-setting="screenshotAutoDownload" /> Auto-download on capture
+      </label>
+    </div>
+  `,
+        "export-element": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Export Element</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure element bundle extraction.</p>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" data-setting="exportInlineCSS" /> Inline computed CSS into the exported snippet
+      </label>
+    </div>
+  `,
+        "css-inspector": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">CSS Inspector</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configure layout overlays and property formats.</p>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" data-setting="cssHighlightBoxModel" /> Highlight element box-model on hover
+      </label>
+    </div>
+  `,
+        "delete-element": `
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px 0; color: #fff;">Delete Element</h2>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0;">Configuration for element deletion tool.</p>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <label style="display:flex; align-items:center; gap:12px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" data-setting="deleteConfirm" /> Require confirmation for container nodes
+      </label>
+    </div>
+  `
+      };
+      defaultContent = `
+  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary); opacity:0.5;">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:16px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    <div style="font-size:16px; font-weight:500;">Settings panel under construction</div>
+    <div style="font-size:12px; margin-top:8px;">Detailed configuration options coming soon.</div>
+  </div>
+`;
+      NAV_ITEMS = [
+        { id: "about", label: "About", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>` },
+        { id: "appearance", label: "Appearance", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>` },
+        { id: "css-inspector", label: "CSS Inspector", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>` },
+        { id: "color-picker", label: "Color Picker", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>` },
+        { id: "screenshot", label: "Screenshot", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>` },
+        { id: "export-element", label: "Export Element", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>` },
+        { id: "extract-images", label: "Extract Images", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>` },
+        { id: "delete-element", label: "Delete Element", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>` }
+      ];
     }
   });
 
@@ -3342,6 +3143,10 @@ ${lines.join("\n")}
     if (document.body.contentEditable === "true") {
       document.body.contentEditable = "false";
     }
+    if (state.activeTool === "fonts-changer" && state.originalBodyFont !== void 0) {
+      document.body.style.fontFamily = state.originalBodyFont;
+      state.originalBodyFont = void 0;
+    }
     state.selectedElementForCss = null;
     if (state.selectedElementForMove) {
       state.selectedElementForMove.style.outline = "";
@@ -3384,18 +3189,18 @@ ${lines.join("\n")}
     const commands = [
       { id: "css-inspector", label: "\u{1F50D} CSS Inspector", category: "Inspect" },
       { id: "live-text-editor", label: "\u{1F4DD} Text Editor", category: "Inspect" },
-      { id: "fonts-changer", label: "\u{1F524} Font Changer (Pro)", category: "Design" },
+      { id: "fonts-changer", label: "\u{1F524} Font Changer", category: "Design" },
       { id: "list-fonts", label: "\u{1F4CB} List Fonts", category: "Design" },
       { id: "color-picker", label: "\u{1F3A8} Color Picker", category: "Design" },
-      { id: "color-palette", label: "\u{1F308} Color Palette (Pro)", category: "Design" },
-      { id: "move-element", label: "\u{1F5B1}\uFE0F Move Element (Pro)", category: "Design" },
+      { id: "color-palette", label: "\u{1F308} Color Palette", category: "Design" },
+      { id: "move-element", label: "\u{1F5B1}\uFE0F Move Element", category: "Design" },
       { id: "delete-element", label: "\u{1F5D1}\uFE0F Delete Element", category: "Inspect" },
-      { id: "export-element", label: "\u{1F4E4} Export Element (Pro)", category: "Capture" },
-      { id: "extract-images", label: "\u{1F5BC}\uFE0F Extract Images (Pro)", category: "Capture" },
-      { id: "page-ruler", label: "\u{1F4CF} Page Ruler (Pro)", category: "Diagnostics" },
+      { id: "export-element", label: "\u{1F4E4} Export Element", category: "Capture" },
+      { id: "extract-images", label: "\u{1F5BC}\uFE0F Extract Images", category: "Capture" },
+      { id: "page-ruler", label: "\u{1F4CF} Page Ruler", category: "Diagnostics" },
       { id: "page-outliner", label: "\u{1F532} Page Outliner", category: "Diagnostics" },
-      { id: "image-replacer", label: "\u{1F504} Image Swap (Pro)", category: "Design" },
-      { id: "take-screenshot", label: "\u{1F4F8} Screenshot (Pro)", category: "Capture" },
+      { id: "image-replacer", label: "\u{1F504} Image Swap", category: "Design" },
+      { id: "take-screenshot", label: "\u{1F4F8} Screenshot", category: "Capture" },
       { id: "tech-stack", label: "\u{1F4BB} Tech Stack Detector", category: "Diagnostics" },
       { id: "seo-meta", label: "\u{1F3F7}\uFE0F SEO Meta Inspector", category: "Diagnostics" },
       { id: "a11y-audit", label: "\u267F Accessibility Audit", category: "Diagnostics" }
@@ -3418,11 +3223,6 @@ ${lines.join("\n")}
       const activeCmd = filtered[activeIndex];
       if (activeCmd) {
         state.shadowRoot.removeChild(backdrop);
-        const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
-        if (premiumTools.includes(activeCmd.id) && !state.isPremium) {
-          showPremiumLockedDrawer(activeCmd.id);
-          return;
-        }
         activateTool(activeCmd.id);
       }
     }
@@ -3503,9 +3303,9 @@ ${lines.join("\n")}
         </p>
       </div>
       <div class="audit-card audit-success" style="margin-top:12px;">
-        <div style="font-size: 12px; font-weight: 700; color:#4ade80; margin-bottom: 4px;">\u{1F511} Premium Key: Active</div>
+        <div style="font-size: 12px; font-weight: 700; color:#4ade80; margin-bottom: 4px;">\u2705 All Tools Unlocked</div>
         <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin: 0;">
-          All Pro tools are fully unlocked. Licensed under <b>WEBDEVPRO2026</b>.
+          Every tool is free to use \u2014 no account or license required.
         </p>
       </div>
       <div style="margin-top: 16px;">
@@ -5225,8 +5025,8 @@ ${lines.join("\n")}
     loadPersistentSettings();
   }
   function loadPersistentSettings() {
-    chrome.storage.local.get(["sidebarPosition", "premium"], (res) => {
-      state.isPremium = res.premium !== false;
+    state.isPremium = true;
+    chrome.storage.local.get(["sidebarPosition"], (res) => {
       if (res.sidebarPosition === "left") {
         setSidebarPosition("left");
       } else {
@@ -5324,14 +5124,6 @@ ${lines.join("\n")}
     ];
     tools.forEach((tool) => {
       state.shadowRoot.getElementById(tool.btnId).addEventListener("click", () => {
-        const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
-        if (premiumTools.includes(tool.id) && !state.isPremium) {
-          deactivateCurrentTool();
-          showPremiumLockedDrawer(tool.id);
-          state.activeTool = tool.id;
-          updateSidebarActiveBtn();
-          return;
-        }
         if (state.activeTool === tool.id) {
           const isOverlayTool = ["settings", "responsive-viewer"].includes(tool.id);
           if (!isOverlayTool && state.drawerEl && !state.drawerEl.classList.contains("visible")) {
@@ -5454,7 +5246,6 @@ ${lines.join("\n")}
       return true;
     }
     if (req.action === "toggleTool") {
-      state.isPremium = !!req.premium;
       chrome.storage.local.set({ hudEnabled: true }, () => {
         ensureHUD();
         if (!state.sidebarVisible) {

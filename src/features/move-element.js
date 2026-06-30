@@ -41,6 +41,7 @@ export   function setupMoveElement() {
             const record = state.undoStacks.movedElements[idx];
             if (record) {
               record.element.style.transform = record.oldTransform;
+              if (state.moveOriginalTransforms) state.moveOriginalTransforms.delete(record.element);
               state.undoStacks.movedElements.splice(idx, 1);
               showToast("Restored translation position");
               drawMoveDrawer();
@@ -71,31 +72,60 @@ export   function setupMoveElement() {
       e.stopPropagation();
 
       if (state.selectedElementForMove) {
+        recordMove(state.selectedElementForMove);
         state.selectedElementForMove = null;
         hideHighlight();
         showToast("Element released");
       } else {
-        state.selectedElementForMove = e.target;
+        selectForMove(e.target);
         const rect = e.target.getBoundingClientRect();
         showHighlight(rect, `${e.target.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
       }
     }, true);
 
+    // Read the current translate(x, y) from any transform reliably (handles
+    // matrix() and matrix3d()) using DOMMatrix.
+    function getTranslate(el) {
+      const t = window.getComputedStyle(el).transform;
+      if (!t || t === "none") return { x: 0, y: 0 };
+      try {
+        const m = new DOMMatrix(t);
+        return { x: m.m41, y: m.m42 };
+      } catch (err) {
+        return { x: 0, y: 0 };
+      }
+    }
+
+    // Remember the element's original inline transform exactly once, so a
+    // single "Reset" restores its true starting position regardless of how
+    // many incremental moves happened in between.
+    function selectForMove(el) {
+      state.selectedElementForMove = el;
+      if (!state.moveOriginalTransforms) state.moveOriginalTransforms = new WeakMap();
+      if (!state.moveOriginalTransforms.has(el)) {
+        state.moveOriginalTransforms.set(el, el.style.transform || "");
+      }
+    }
+
+    // Push a single undo record per element (de-duplicated) capturing its
+    // original transform, not the intermediate one.
+    function recordMove(el) {
+      if (!el || !state.moveOriginalTransforms) return;
+      const original = state.moveOriginalTransforms.get(el) || "";
+      const existing = state.undoStacks.movedElements.find(m => m.element === el);
+      if (!existing) {
+        state.undoStacks.movedElements.push({ element: el, oldTransform: original });
+        drawMoveDrawer();
+      }
+    }
+
     // Keyboard Arrows adjust
     trackListener(document, "keydown", (e) => {
       if (!state.selectedElementForMove) return;
       const el = state.selectedElementForMove;
-      const style = window.getComputedStyle(el);
-      
-      let tx = 0, ty = 0;
-      const matrix = style.transform || style.webkitTransform;
-      if (matrix && matrix !== "none") {
-        const parts = matrix.split(", ");
-        if (parts.length >= 6) {
-          tx = parseFloat(parts[4]);
-          ty = parseFloat(parts[5]);
-        }
-      }
+
+      const { x: curX, y: curY } = getTranslate(el);
+      let tx = curX, ty = curY;
 
       const step = e.shiftKey ? 10 : 1;
       let handled = false;
@@ -105,25 +135,21 @@ export   function setupMoveElement() {
         case "ArrowDown": ty += step; handled = true; break;
         case "ArrowLeft": tx -= step; handled = true; break;
         case "ArrowRight": tx += step; handled = true; break;
-        case "Escape": 
-          state.selectedElementForMove = null; 
-          hideHighlight(); 
-          showToast("Move ended"); 
+        case "Escape":
+          recordMove(el);
+          state.selectedElementForMove = null;
+          hideHighlight();
+          showToast("Move ended");
           break;
       }
 
       if (handled) {
         e.preventDefault();
-        state.undoStacks.movedElements.push({ element: el, oldTransform: el.style.transform });
         el.style.transform = `translate(${tx}px, ${ty}px)`;
-        drawMoveDrawer();
-        
-        setTimeout(() => {
-          const rect = el.getBoundingClientRect();
-          showHighlight(rect, `${el.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
-        }, 30);
+        const rect = el.getBoundingClientRect();
+        showHighlight(rect, `${el.tagName.toLowerCase()} (Ready to move. Drag or Arrows)`, "var(--accent-purple)");
       }
-    });
+    }, true);
 
     // Mouse drag support
     let isDragging = false;
@@ -138,20 +164,10 @@ export   function setupMoveElement() {
       dragStartX = e.clientX;
       dragStartY = e.clientY;
 
-      const style = window.getComputedStyle(state.selectedElementForMove);
-      const matrix = style.transform || style.webkitTransform;
-      initialTx = 0;
-      initialTy = 0;
+      const { x, y } = getTranslate(state.selectedElementForMove);
+      initialTx = x;
+      initialTy = y;
 
-      if (matrix && matrix !== "none") {
-        const parts = matrix.split(", ");
-        if (parts.length >= 6) {
-          initialTx = parseFloat(parts[4]);
-          initialTy = parseFloat(parts[5]);
-        }
-      }
-
-      state.moveStartPos = state.selectedElementForMove.style.transform;
       e.preventDefault();
     }, true);
 
@@ -169,8 +185,7 @@ export   function setupMoveElement() {
     trackListener(document, "mouseup", () => {
       if (isDragging) {
         isDragging = false;
-        state.undoStacks.movedElements.push({ element: state.selectedElementForMove, oldTransform: state.moveStartPos });
-        drawMoveDrawer();
+        recordMove(state.selectedElementForMove);
       }
     }, true);
   }

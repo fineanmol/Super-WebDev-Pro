@@ -531,21 +531,23 @@ export   function renderCSSDetailsInDrawer() {
         const eyeBtn = row.querySelector(".prop-eye-toggle");
         eyeBtn.onclick = () => {
           if (isDisabled) {
+            // Re-enable: restore the inline override we removed, if any.
             disabledSet.delete(propName);
             const cached = valuesMap[propName];
             if (cached && cached.inline) {
               el.style.setProperty(propName, cached.inline, "important");
-            } else {
-              el.style.removeProperty(propName);
             }
             delete valuesMap[propName];
           } else {
+            // Disable: drop any inline override so the property reverts to the
+            // stylesheet/inherited value. We remember the inline value (if it
+            // was set inline) so the toggle is reversible.
             disabledSet.add(propName);
             valuesMap[propName] = {
               inline: el.style.getPropertyValue(propName),
               computed: propVal
             };
-            el.style.setProperty(propName, "unset", "important");
+            el.style.removeProperty(propName);
           }
           renderPropertiesList();
           const newRect = el.getBoundingClientRect();
@@ -564,7 +566,10 @@ export   function renderCSSDetailsInDrawer() {
         if (propType === "slider") {
           const slider = row.querySelector(".prop-slider");
           const numBox = row.querySelector(".prop-slider-num-box");
-          const unit = sliderUnit;
+          // Preserve the value's existing unit (e.g. em/%) instead of always
+          // forcing px, which would mangle unitless/relative values.
+          const parsed = parseValAndUnit(propVal);
+          const unit = parsed.unit || sliderUnit;
 
           slider.oninput = () => {
             numBox.value = slider.value;
@@ -572,8 +577,10 @@ export   function renderCSSDetailsInDrawer() {
           };
 
           numBox.oninput = () => {
-            slider.value = numBox.value;
-            updateStyleValue(numBox.value + unit);
+            const n = parseFloat(numBox.value);
+            if (isNaN(n)) return;
+            slider.value = n;
+            updateStyleValue(n + unit);
           };
         } else if (propType === "select") {
           const select = row.querySelector("select");
@@ -622,10 +629,11 @@ export   function renderCSSDetailsInDrawer() {
 
       propNames.forEach(propName => {
         if (disabledSet.has(propName)) {
-          const cachedVal = valuesMap[propName] || computed.getPropertyValue(propName) || computed[propName] || "";
+          const cached = valuesMap[propName];
+          const cachedVal = (cached && (cached.inline || cached.computed)) || computed.getPropertyValue(propName) || "";
           lines.push(`  <span style="color: rgba(255,255,255,0.25); font-style: italic;">/* ${propName}: ${cachedVal}; */</span>`);
         } else {
-          const val = el.style[propName] || computed.getPropertyValue(propName) || computed[propName];
+          const val = el.style.getPropertyValue(propName) || computed.getPropertyValue(propName);
           if (val) {
             const colorVal = extractColor(propName, val);
             let swatch = "";

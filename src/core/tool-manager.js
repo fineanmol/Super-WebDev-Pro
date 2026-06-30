@@ -115,6 +115,12 @@ export   function deactivateCurrentTool() {
       document.body.contentEditable = "false";
     }
 
+    // Restore the page's original body font if the Font Changer altered it.
+    if (state.activeTool === "fonts-changer" && state.originalBodyFont !== undefined) {
+      document.body.style.fontFamily = state.originalBodyFont;
+      state.originalBodyFont = undefined;
+    }
+
     state.selectedElementForCss = null;
     if (state.selectedElementForMove) {
       state.selectedElementForMove.style.outline = "";
@@ -173,18 +179,18 @@ export   function openCommandPalette() {
     const commands = [
       { id: "css-inspector", label: "🔍 CSS Inspector", category: "Inspect" },
       { id: "live-text-editor", label: "📝 Text Editor", category: "Inspect" },
-      { id: "fonts-changer", label: "🔤 Font Changer (Pro)", category: "Design" },
+      { id: "fonts-changer", label: "🔤 Font Changer", category: "Design" },
       { id: "list-fonts", label: "📋 List Fonts", category: "Design" },
       { id: "color-picker", label: "🎨 Color Picker", category: "Design" },
-      { id: "color-palette", label: "🌈 Color Palette (Pro)", category: "Design" },
-      { id: "move-element", label: "🖱️ Move Element (Pro)", category: "Design" },
+      { id: "color-palette", label: "🌈 Color Palette", category: "Design" },
+      { id: "move-element", label: "🖱️ Move Element", category: "Design" },
       { id: "delete-element", label: "🗑️ Delete Element", category: "Inspect" },
-      { id: "export-element", label: "📤 Export Element (Pro)", category: "Capture" },
-      { id: "extract-images", label: "🖼️ Extract Images (Pro)", category: "Capture" },
-      { id: "page-ruler", label: "📏 Page Ruler (Pro)", category: "Diagnostics" },
+      { id: "export-element", label: "📤 Export Element", category: "Capture" },
+      { id: "extract-images", label: "🖼️ Extract Images", category: "Capture" },
+      { id: "page-ruler", label: "📏 Page Ruler", category: "Diagnostics" },
       { id: "page-outliner", label: "🔲 Page Outliner", category: "Diagnostics" },
-      { id: "image-replacer", label: "🔄 Image Swap (Pro)", category: "Design" },
-      { id: "take-screenshot", label: "📸 Screenshot (Pro)", category: "Capture" },
+      { id: "image-replacer", label: "🔄 Image Swap", category: "Design" },
+      { id: "take-screenshot", label: "📸 Screenshot", category: "Capture" },
       { id: "tech-stack", label: "💻 Tech Stack Detector", category: "Diagnostics" },
       { id: "seo-meta", label: "🏷️ SEO Meta Inspector", category: "Diagnostics" },
       { id: "a11y-audit", label: "♿ Accessibility Audit", category: "Diagnostics" }
@@ -211,14 +217,6 @@ export   function openCommandPalette() {
       if (activeCmd) {
         // Close palette first
         state.shadowRoot.removeChild(backdrop);
-        
-        // Handle premium lock
-        const premiumTools = ["fonts-changer", "color-palette", "move-element", "export-element", "extract-images", "page-ruler", "image-replacer", "take-screenshot"];
-        if (premiumTools.includes(activeCmd.id) && !state.isPremium) {
-          showPremiumLockedDrawer(activeCmd.id);
-          return;
-        }
-        
         activateTool(activeCmd.id);
       }
     }
