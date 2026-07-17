@@ -1,0 +1,43 @@
+<!DOCTYPE html><html><head><meta charset=utf-8><title>Privacy Policy — Figma Design Reviewer</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<style>body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.55;color:#111} h1,h2{line-height:1.2}</style>
+</head><body><p>&lt;!--<br>
+  ⚠️ AI-DRAFTED — REVIEW BEFORE PUBLISHING<br>
+  This privacy policy was drafted with AI assistance. It must be reviewed and<br>
+  approved by your legal/compliance team, and hosted at a public URL, before it<br>
+  is linked in the Chrome Web Store Developer Dashboard. Replace the placeholder<br>
+  contact and hosting URL below.<br>
+--&gt;</p><p><h1>Privacy Policy — Figma Design Reviewer</h1></p><p>_Last updated: 2026-06-30_</p><p>Figma Design Reviewer (&quot;the extension&quot;) is a developer tool that compares a live<br>
+web page against Figma designs. This policy explains exactly what data the<br>
+extension handles and where it goes.</p><p><h2>What the extension stores</h2></p><p>The extension stores the following **locally in your browser only**, using<br>
+Chrome&#x27;s `chrome.storage.local`:</p><p>- **Your Figma Personal Access Token (PAT)** — used to authenticate requests to<br>
+  the Figma API.<br>
+- **Your Figma account name and email** — returned by Figma when the token is<br>
+  verified, shown in the UI to confirm who is connected.<br>
+- **Saved Figma nodes** — the design data (layout, styles, and a preview image<br>
+  URL) for components/frames you have fetched, so you can switch between them<br>
+  without re-fetching.<br>
+- **Your tolerance/preference settings.**</p><p>This data never leaves your browser except as described below.</p><p><h2>What the extension sends, and where</h2></p><p>- **To `api.figma.com` only:** your Personal Access Token (in the<br>
+  `X-Figma-Token` request header) and the file/node IDs you ask to review, so<br>
+  Figma can return that design&#x27;s data and a preview image. This is the only<br>
+  network destination the extension contacts.<br>
+- **Nothing else.** The extension contains no analytics, no telemetry, no<br>
+  advertising, and no third-party SDKs. We do not operate any server and never<br>
+  receive your data.</p><p><h2>The web pages you inspect</h2></p><p>When you use the overlay, element picker, or diff features, the extension reads<br>
+the structure and computed styles of the page **locally, in your browser**, to<br>
+compare them against the Figma design. This page data is **never transmitted**<br>
+anywhere — it is used only to render the comparison in the side panel and on the<br>
+page, and is discarded when you close the panel or navigate away.</p><p><h2>Permissions and why they are needed</h2></p><p>- **`storage`** — to save your token, connected account, saved nodes, and<br>
+  settings locally (above).<br>
+- **`activeTab` + `scripting`** — to inject the comparison/overlay code into the<br>
+  current tab **only when you explicitly act** (open the panel and run a<br>
+  feature). The extension does not run on pages in the background.<br>
+- **`sidePanel`** — to show the extension UI in Chrome&#x27;s side panel.<br>
+- **Host access to `https://api.figma.com/*`** — to call the Figma API.</p><p>The extension requests **no broad host permissions** and does **not** run a<br>
+content script on every site.</p><p><h2>Data retention and deletion</h2></p><p>All stored data lives in your browser. You can delete it at any time:</p><p>- **Disconnect / Sign out** in the extension removes your token and account info.<br>
+- **Clear all** removes your saved nodes.<br>
+- Removing the extension from Chrome deletes all of its local storage.</p><p>To revoke API access entirely, delete the Personal Access Token in your<br>
+[Figma account settings](https://www.figma.com/settings).</p><p><h2>Children</h2></p><p>The extension is a developer tool and is not directed at children.</p><p><h2>Changes</h2></p><p>If this policy changes, the &quot;Last updated&quot; date above will change and the new<br>
+version will be posted at the policy URL linked from the Chrome Web Store<br>
+listing.</p><p><h2>Contact</h2></p><p>Questions about this policy: **&lt;add a contact email before publishing&gt;**.<br>
+</p></body></html>
